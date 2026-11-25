@@ -12,7 +12,7 @@
  *  - lançamento de ocorrência cancelado fora do custo (efetivado + provisionado entram)
  *  - tabela de frete de 2025 vencida → vale a vigência sem data de fim
  */
-import { db } from '../db.js';
+import { inserirEmLote, sql, transacao } from '../db.js';
 import {
   arred,
   codigo,
@@ -29,7 +29,30 @@ import {
 import type { Ocorrencia, OperacaoMes, Premissa, Rota } from '../types.js';
 
 type Linha = Record<string, string | null>;
-const ler = (tabela: string, ordem = ''): Linha[] => db.prepare(`SELECT * FROM ${tabela} ${ordem}`).all() as Linha[];
+
+// A bronze é lida uma vez do Postgres; as regras abaixo trabalham em memória.
+const bronze = new Map<string, Linha[]>();
+const ORDEM: Record<string, string> = {
+  bronze_tms_coletas: 'ORDER BY _ingested_at',
+  bronze_sac_ocorrencias: 'ORDER BY protocolo',
+};
+const TABELAS = [
+  'bronze_tms_locais', 'bronze_erp_transportadoras', 'bronze_fin_tabela_frete', 'bronze_erp_produtos',
+  'bronze_tms_veiculos', 'bronze_tms_rotas', 'bronze_fin_ctes', 'bronze_tms_coletas', 'bronze_tms_coleta_tentativas',
+  'bronze_wms_recebimentos', 'bronze_wms_movimentos_crossdock', 'bronze_tms_viagens', 'bronze_tms_entrega_tentativas',
+  'bronze_tms_entregas', 'bronze_sac_tipos_ocorrencia', 'bronze_fin_lancamentos_ocorrencia',
+  'bronze_sac_ocorrencia_eventos', 'bronze_sac_ocorrencias', 'bronze_cfg_premissas',
+];
+async function carregarBronzeDoBanco() {
+  await Promise.all(
+    TABELAS.map(async (t) => bronze.set(t, await sql<Linha>(`SELECT * FROM ${t} ${ORDEM[t] ?? ''}`))),
+  );
+}
+const ler = (tabela: string): Linha[] => {
+  const l = bronze.get(tabela);
+  if (!l) throw new Error(`Tabela não carregada: ${tabela}`);
+  return l;
+};
 
 function agrupar<T>(xs: T[], chave: (x: T) => string): Map<string, T[]> {
   const m = new Map<string, T[]>();
@@ -42,23 +65,27 @@ function agrupar<T>(xs: T[], chave: (x: T) => string): Map<string, T[]> {
   return m;
 }
 
-/** Cria (ou recria) a tabela gold com as colunas do primeiro objeto e insere tudo. */
-function gravar(tabela: string, linhas: object[], colunasExtras: string[] = []) {
-  db.exec(`DROP TABLE IF EXISTS ${tabela}`);
-  const colunas = [...new Set([...linhas.flatMap((l) => Object.keys(l)), ...colunasExtras])];
-  db.exec(`CREATE TABLE ${tabela} (${colunas.map((c) => `"${c}"`).join(', ')})`);
-  const ins = db.prepare(`INSERT INTO ${tabela} VALUES (${colunas.map(() => '?').join(', ')})`);
-  db.exec('BEGIN');
-  for (const l of linhas) {
-    const r = l as Record<string, unknown>;
-    ins.run(...colunas.map((c) => (r[c] === undefined ? null : (r[c] as string | number | null))));
-  }
-  db.exec('COMMIT');
+/** Tipo da coluna pelo conteúdo: número vira DOUBLE PRECISION (volta como number), o resto TEXT. */
+function tipoDaColuna(linhas: Record<string, unknown>[], c: string) {
+  const valores = linhas.map((l) => l[c]).filter((v) => v !== null && v !== undefined);
+  return valores.length && valores.every((v) => typeof v === 'number') ? 'DOUBLE PRECISION' : 'TEXT';
+}
+
+/** Cria (ou recria) a tabela gold com as colunas dos objetos e insere tudo. */
+async function gravar(tabela: string, linhas: object[], colunasExtras: string[] = []) {
+  const ls = linhas as Record<string, unknown>[];
+  const colunas = [...new Set([...ls.flatMap((l) => Object.keys(l)), ...colunasExtras])];
+  await transacao(async (c) => {
+    await c.query(`DROP TABLE IF EXISTS ${tabela}`);
+    await c.query(`CREATE TABLE ${tabela} (${colunas.map((x) => `"${x}" ${tipoDaColuna(ls, x)}`).join(', ')})`);
+    await inserirEmLote(c, tabela, colunas, ls.map((l) => colunas.map((x) => l[x] ?? null)));
+  });
   console.log(`  ${tabela}: ${linhas.length.toLocaleString('pt-BR')} linhas`);
 }
 
-export function construirGold() {
+export async function construirGold() {
   console.log('Montando o gold');
+  await carregarBronzeDoBanco();
 
   // ---------- cadastros ----------
   const locais = new Map(ler('bronze_tms_locais').map((l) => [l.cod_local!, l]));
@@ -112,7 +139,7 @@ export function construirGold() {
 
   // ---------- coleta ----------
   const coletas = new Map<string, Linha>();
-  for (const c of ler('bronze_tms_coletas', 'ORDER BY _ingested_at')) coletas.set(c.coleta_id!, c); // última ingestão vence
+  for (const c of ler('bronze_tms_coletas')) coletas.set(c.coleta_id!, c); // última ingestão vence
   const tentativasColeta = agrupar(ler('bronze_tms_coleta_tentativas'), (t) => t.coleta_id!);
   const entradaNoCd = new Map(ler('bronze_wms_recebimentos').map((r) => [r.origem_id!, r.entrada_em!]));
 
@@ -218,14 +245,10 @@ export function construirGold() {
   for (const v of ler('bronze_tms_viagens')) rotaDaOperacao.set(v.viagem_id!, v.rota_id!);
   for (const e of ler('bronze_tms_entregas')) rotaDaOperacao.set(e.entrega_id!, e.rota_id!);
 
-  const posicao =
-    (db.prepare(`SELECT valor FROM bronze_meta WHERE chave = 'posicao'`).get() as { valor: string } | undefined)?.valor ??
-    '2026-11-24';
+  const [meta] = await sql<{ valor: string }>(`SELECT valor FROM bronze_meta WHERE chave = 'posicao'`).catch(() => []);
+  const posicao = meta?.valor ?? '2026-11-24';
 
-  const ocorrencias: (Ocorrencia & { protocolo: string; canal: string })[] = ler(
-    'bronze_sac_ocorrencias',
-    'ORDER BY protocolo',
-  ).map((s, i) => {
+  const ocorrencias: (Ocorrencia & { protocolo: string; canal: string })[] = ler('bronze_sac_ocorrencias').map((s, i) => {
     const tipo = tipos.get(codigo(s.codigo_tipo!));
     if (!tipo) throw new Error(`Código de ocorrência desconhecido: "${s.codigo_tipo}" (${s.protocolo})`);
     const rota_id = rotaDaOperacao.get(s.ref_id!);
@@ -271,11 +294,11 @@ export function construirGold() {
   }));
   const mesAnterior = new Date(Date.parse(`${posicao.slice(0, 7)}-15`) - 30 * 86_400_000).toISOString().slice(0, 7);
 
-  gravar('gold_rotas', rotas);
-  gravar('gold_operacao_mes', operacao);
-  gravar('gold_ocorrencias', ocorrencias);
-  gravar('gold_premissas', premissas, ['descricao', 'peso', 'nota_zero', 'nota_cem', 'formato', 'valor']);
-  gravar('gold_referencia', [{ data: posicao, mes: posicao.slice(0, 7), mes_anterior: mesAnterior }]);
+  await gravar('gold_rotas', rotas);
+  await gravar('gold_operacao_mes', operacao);
+  await gravar('gold_ocorrencias', ocorrencias);
+  await gravar('gold_premissas', premissas, ['descricao', 'peso', 'nota_zero', 'nota_cem', 'formato', 'valor']);
+  await gravar('gold_referencia', [{ data: posicao, mes: posicao.slice(0, 7), mes_anterior: mesAnterior }]);
 }
 
 function arredOuNull(n: number | null, casas: number) {

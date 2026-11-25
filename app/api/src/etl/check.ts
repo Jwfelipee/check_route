@@ -5,11 +5,11 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { db, tabelaExiste, WEB_DATA_DIR } from '../db.js';
+import { pool, sql, tabelaExiste, WEB_DATA_DIR } from '../db.js';
 
 type Obj = Record<string, unknown>;
 const json = (n: string) => JSON.parse(readFileSync(resolve(WEB_DATA_DIR, `${n}.json`), 'utf8')) as Obj[];
-const gold = (t: string) => db.prepare(`SELECT * FROM ${t}`).all() as Obj[];
+const gold = (t: string) => sql<Obj>(`SELECT * FROM ${t}`);
 
 const RECURSOS: { nome: string; tabela: string; chave: (o: Obj) => string }[] = [
   { nome: 'rotas', tabela: 'gold_rotas', chave: (o) => String(o.rota_id) },
@@ -22,7 +22,7 @@ const RECURSOS: { nome: string; tabela: string; chave: (o: Obj) => string }[] = 
 const igual = (a: unknown, b: unknown) =>
   typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) < 0.0051 : (a ?? null) === (b ?? null);
 
-if (!tabelaExiste('gold_rotas')) {
+if (!(await tabelaExiste('gold_rotas'))) {
   console.error('Gold não encontrado. Rode antes: npm run etl -w app/api');
   process.exit(1);
 }
@@ -30,7 +30,7 @@ if (!tabelaExiste('gold_rotas')) {
 let falhas = 0;
 for (const r of RECURSOS) {
   const esperado = new Map(json(r.nome).map((o) => [r.chave(o), o]));
-  const obtido = new Map(gold(r.tabela).map((o) => [r.chave(o), o]));
+  const obtido = new Map((await gold(r.tabela)).map((o) => [r.chave(o), o]));
   const porCampo: Record<string, number> = {};
   const exemplos: string[] = [];
   let faltando = 0;
@@ -57,4 +57,5 @@ for (const r of RECURSOS) {
   for (const ex of exemplos) console.log(`    ${ex}`);
 }
 console.log(falhas === 0 ? '\nGold idêntico aos dados do front.' : `\n${falhas} diferenças.`);
+await pool.end();
 process.exit(falhas === 0 ? 0 : 1);

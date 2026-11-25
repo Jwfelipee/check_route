@@ -3,7 +3,7 @@
  * e grava cada chamada em ia_uso (critério "custo e latência" / observabilidade).
  * Se o Claude falhar (rede, chave), cai no simulado e avisa na resposta.
  */
-import { db } from '../db.js';
+import { sql } from '../db.js';
 import * as claude from './claude.js';
 import * as fake from './fake.js';
 
@@ -24,19 +24,11 @@ export interface Meta {
   aviso?: string;
 }
 
-function registrar(operacao: string, meta: Meta) {
-  db.prepare(
-    `INSERT INTO ia_uso (quando, operacao, modelo, input_tokens, output_tokens, custo_usd, ms, simulado)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    new Date().toISOString(),
-    operacao,
-    meta.modelo,
-    meta.input_tokens,
-    meta.output_tokens,
-    meta.custo_usd,
-    meta.ms,
-    meta.modo === 'simulado' ? 1 : 0,
+async function registrar(operacao: string, meta: Meta) {
+  await sql(
+    `INSERT INTO ia_uso (operacao, modelo, input_tokens, output_tokens, custo_usd, ms, simulado)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [operacao, meta.modelo, meta.input_tokens, meta.output_tokens, meta.custo_usd, meta.ms, meta.modo === 'simulado'],
   );
 }
 
@@ -57,7 +49,7 @@ async function executar<T>(
     try {
       const { dados, uso } = await real();
       const meta: Meta = { modo: 'claude', ms: Math.round(performance.now() - t0), ...uso, custo_usd: custo(uso) };
-      registrar(operacao, meta);
+      await registrar(operacao, meta);
       return { dados, meta };
     } catch (e) {
       aviso = `Claude indisponível (${(e as Error).message}); resposta do modo simulado.`;
@@ -73,7 +65,7 @@ async function executar<T>(
     custo_usd: 0,
     aviso,
   };
-  registrar(operacao, meta);
+  await registrar(operacao, meta);
   return { dados, meta };
 }
 

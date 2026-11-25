@@ -7,7 +7,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod/v4';
-import { db } from '../db.js';
+import { sql } from '../db.js';
 import { ia } from '../ia/index.js';
 import {
   CAMPOS_OBRIGATORIOS,
@@ -32,7 +32,7 @@ export async function rotasIa(app: FastifyInstance) {
     const p = PedidoExtracao.safeParse(req.body);
     if (!p.success) return reply.code(400).send({ erro: 'Pedido inválido', detalhes: z.flattenError(p.error) });
 
-    const rotas = store.rotas();
+    const rotas = await store.rotas();
     const { dados: ficha, meta } = await ia.extrairFicha({
       rotas,
       relato: p.data.relato,
@@ -60,11 +60,11 @@ export async function rotasIa(app: FastifyInstance) {
     const p = FichaConfirmada.safeParse(req.body);
     if (!p.success) return reply.code(400).send({ erro: 'Ficha incompleta', detalhes: z.flattenError(p.error) });
     const f = p.data;
-    const rota = store.rotas().find((r) => r.rota_id === f.rota_id && r.perna === 'transferencia');
+    const rota = (await store.rotas()).find((r) => r.rota_id === f.rota_id && r.perna === 'transferencia');
     if (!rota) return reply.code(400).send({ erro: `Rota de transferência desconhecida: ${f.rota_id}` });
 
     const data = f.data_hora.slice(0, 10);
-    const ref = store.referencia().data;
+    const ref = (await store.referencia()).data;
     const diasAberto = Math.max(0, Math.round((Date.parse(ref) - Date.parse(data)) / 86_400_000));
     const { relato, ...detalhes } = f;
 
@@ -84,15 +84,15 @@ export async function rotasIa(app: FastifyInstance) {
       dias_em_aberto: diasAberto,
       detalhes: { ...detalhes, relato, acidente: TIPOS_ACIDENTE.includes(f.tipo), origem: 'relato + IA, confirmado por pessoa' },
     };
-    return reply.code(201).send(store.criarOcorrencia(oc));
+    return reply.code(201).send(await store.criarOcorrencia(oc));
   });
 
   app.post('/acoes/sugerir', async (req, reply) => {
     const p = PedidoSugestao.safeParse(req.body);
     if (!p.success) return reply.code(400).send({ erro: 'Pedido inválido', detalhes: z.flattenError(p.error) });
-    const rota = store.rotas().find((r) => r.rota_id === p.data.rota_id);
+    const rota = (await store.rotas()).find((r) => r.rota_id === p.data.rota_id);
     if (!rota) return reply.code(404).send({ erro: 'Rota não encontrada' });
-    const praticas = store.praticas().filter((x) => x.perna === rota.perna);
+    const praticas = (await store.praticas()).filter((x) => x.perna === rota.perna);
 
     const { dados, meta } = await ia.sugerirAcao({
       rota,
@@ -115,15 +115,14 @@ export async function rotasIa(app: FastifyInstance) {
   });
 
   app.get('/ia/uso', async () => {
-    const resumo = db
-      .prepare(
-        `SELECT operacao, modelo, simulado, COUNT(*) AS chamadas,
-                ROUND(AVG(ms)) AS ms_medio, SUM(input_tokens) AS input_tokens, SUM(output_tokens) AS output_tokens,
-                SUM(custo_usd) AS custo_usd, SUM(custo_usd) / COUNT(*) AS custo_medio_usd
-         FROM ia_uso GROUP BY operacao, modelo, simulado ORDER BY operacao`,
-      )
-      .all();
-    const ultimas = db.prepare('SELECT * FROM ia_uso ORDER BY id DESC LIMIT 20').all();
+    const resumo = await sql(
+      `SELECT operacao, modelo, simulado, COUNT(*)::int AS chamadas,
+              ROUND(AVG(ms))::int AS ms_medio, SUM(input_tokens)::int AS input_tokens,
+              SUM(output_tokens)::int AS output_tokens, SUM(custo_usd) AS custo_usd,
+              SUM(custo_usd) / COUNT(*) AS custo_medio_usd
+       FROM ia_uso GROUP BY operacao, modelo, simulado ORDER BY operacao`,
+    );
+    const ultimas = await sql('SELECT * FROM ia_uso ORDER BY id DESC LIMIT 20');
     return { resumo, ultimas };
   });
 }

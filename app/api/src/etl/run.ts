@@ -4,8 +4,10 @@
  */
 import { carregarBronze } from './load-bronze.js';
 import { construirGold } from './build-gold.js';
+import { pool } from '../db.js';
 
 const t0 = performance.now();
 if (!process.argv.includes('--gold')) await carregarBronze();
-construirGold();
+await construirGold();
 console.log(`ETL concluído em ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+await pool.end();

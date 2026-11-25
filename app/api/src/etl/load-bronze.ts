@@ -1,11 +1,11 @@
 /**
- * Camada bronze: copia cada aba da planilha para uma tabela bronze_<aba> no SQLite,
+ * Camada bronze: copia cada aba da planilha para uma tabela bronze_<aba> no Postgres,
  * tudo como texto, sem limpar nada (a limpeza fica em build-gold.ts).
  */
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import ExcelJS from 'exceljs';
-import { API_DIR, db } from '../db.js';
+import { API_DIR, inserirEmLote, sql, transacao } from '../db.js';
 
 export function acharPlanilha(): string {
   const candidatos = [
@@ -50,33 +50,36 @@ export async function carregarBronze(arquivo = acharPlanilha()) {
         const t = (linha.values as ExcelJS.CellValue[]).map(texto).join(' ');
         const m = t.match(/Posi[çc][ãa]o:\s*(\d{4}-\d{2}-\d{2})/);
         if (m) {
-          db.exec('CREATE TABLE IF NOT EXISTS bronze_meta (chave TEXT PRIMARY KEY, valor TEXT)');
-          db.prepare('INSERT OR REPLACE INTO bronze_meta VALUES (?, ?)').run('posicao', m[1]);
+          await sql('CREATE TABLE IF NOT EXISTS bronze_meta (chave TEXT PRIMARY KEY, valor TEXT)');
+          await sql(
+            'INSERT INTO bronze_meta VALUES ($1, $2) ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor',
+            ['posicao', m[1]],
+          );
         }
       }
       continue;
     }
     const tabela = `bronze_${ident(nome)}`;
     let colunas: string[] | null = null;
-    let insert: ReturnType<typeof db.prepare> | null = null;
-    let n = 0;
+    const linhas: (string | null)[][] = [];
 
-    db.exec('BEGIN');
     for await (const linha of aba) {
       const valores = (linha.values as ExcelJS.CellValue[]).slice(1).map(texto);
       if (!colunas) {
         colunas = valores.map((v, i) => ident(v ?? `col_${i + 1}`));
-        db.exec(`DROP TABLE IF EXISTS ${tabela}`);
-        db.exec(`CREATE TABLE ${tabela} (${colunas.map((c) => `"${c}" TEXT`).join(', ')})`);
-        insert = db.prepare(`INSERT INTO ${tabela} VALUES (${colunas.map(() => '?').join(', ')})`);
         continue;
       }
       if (valores.every((v) => v === null)) continue;
-      const linhaCheia = colunas.map((_, i) => valores[i] ?? null);
-      insert!.run(...linhaCheia);
-      n++;
+      linhas.push(colunas.map((_, i) => valores[i] ?? null));
     }
-    db.exec('COMMIT');
+    if (!colunas) continue;
+    const cols = colunas;
+    await transacao(async (c) => {
+      await c.query(`DROP TABLE IF EXISTS ${tabela}`);
+      await c.query(`CREATE TABLE ${tabela} (${cols.map((x) => `"${x}" TEXT`).join(', ')})`);
+      await inserirEmLote(c, tabela, cols, linhas);
+    });
+    const n = linhas.length;
     resumo[tabela] = n;
     console.log(`  ${tabela}: ${n.toLocaleString('pt-BR')} linhas`);
   }

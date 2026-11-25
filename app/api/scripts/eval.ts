@@ -12,35 +12,32 @@
  * Precisa do ETL (npm run etl -w app/api). Sem ANTHROPIC_API_KEY roda no modo
  * simulado, que serve só para testar o script: o número que vale é o do Claude.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { API_DIR, db, tabelaExiste } from '../src/db.js';
+import { API_DIR, pool, sql, tabelaExiste } from '../src/db.js';
 import { ia, modoIa } from '../src/ia/index.js';
-
-const envFile = resolve(API_DIR, '.env');
-if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 const arg = (nome: string) => {
   const i = process.argv.indexOf(`--${nome}`);
   return i > 0 ? process.argv[i + 1] : undefined;
 };
 
-if (!tabelaExiste('bronze_sac_ocorrencias')) {
+if (!(await tabelaExiste('bronze_sac_ocorrencias'))) {
   console.error('Rode antes: npm run etl -w app/api');
   process.exit(1);
 }
 
 type Tipo = { codigo: string; codigo_legado: string; descricao: string; tipo_perna: string };
-const tipos = db.prepare('SELECT codigo, codigo_legado, descricao, tipo_perna FROM bronze_sac_tipos_ocorrencia').all() as Tipo[];
+const tipos = await sql<Tipo>('SELECT codigo, codigo_legado, descricao, tipo_perna FROM bronze_sac_tipos_ocorrencia');
 const atual = new Map<string, string>();
 for (const t of tipos) {
   atual.set(t.codigo, t.codigo);
   atual.set(t.codigo_legado, t.codigo);
 }
 
-const linhas = db
-  .prepare('SELECT relato, codigo_tipo, ref_tipo, canal FROM bronze_sac_ocorrencias')
-  .all() as { relato: string; codigo_tipo: string; ref_tipo: string; canal: string }[];
+const linhas = await sql<{ relato: string; codigo_tipo: string; ref_tipo: string; canal: string }>(
+  'SELECT relato, codigo_tipo, ref_tipo, canal FROM bronze_sac_ocorrencias',
+);
 
 // Um caso por relato distinto (a base repete o mesmo texto em vários protocolos).
 const casos = new Map<string, { relato: string; esperado: string; operacao: string; canal: string }>();
@@ -148,3 +145,4 @@ writeFileSync(
   ),
 );
 console.log(`Resultado salvo em ${arquivo}`);
+await pool.end();

@@ -24,18 +24,18 @@ const NovaAcao = z.object({
 const MudaStatus = z.object({ status: z.enum(['Concluída', 'Cancelada']) });
 
 export async function rotasAcoes(app: FastifyInstance) {
-  app.get('/acoes', async () => store.acoes());
+  app.get('/acoes', () => store.acoes());
 
   app.post('/acoes', async (req, reply) => {
     const r = NovaAcao.safeParse(req.body);
     if (!r.success) return reply.code(400).send({ erro: 'Ação inválida', detalhes: z.flattenError(r.error) });
-    return reply.code(201).send(store.criarAcao(r.data));
+    return reply.code(201).send(await store.criarAcao(r.data));
   });
 
   app.patch<{ Params: { id: string } }>('/acoes/:id', async (req, reply) => {
     const r = MudaStatus.safeParse(req.body);
     if (!r.success) return reply.code(400).send({ erro: 'Status inválido' });
-    const a = store.mudarStatusAcao(req.params.id, r.data.status);
+    const a = await store.mudarStatusAcao(req.params.id, r.data.status);
     if (!a) return reply.code(404).send({ erro: 'Ação não encontrada' });
     return a;
   });
