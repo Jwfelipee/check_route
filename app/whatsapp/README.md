@@ -1,6 +1,6 @@
 # app/whatsapp · agente de ocorrências pelo WhatsApp
 
-O motorista conta a ocorrência pelo WhatsApp (texto e foto), o agente pergunta o que falta,
+O motorista conta a ocorrência pelo WhatsApp (texto, áudio e foto), o agente pergunta o que falta,
 mostra um resumo com os botões **Confirmar** e **Corrigir**, e só depois de "Confirmar"
 a ocorrência entra na API (`app/api`). Ninguém precisa instalar aplicativo.
 
@@ -38,7 +38,8 @@ Detalhes:
 - Quem pode registrar é o cadastro de **Contatos** do painel (substitui `WA_NUMEROS_PERMITIDOS`). Para testar com o seu número: `WA_CONTATOS_DEMO="5531999990000:Seu Nome:motorista:T02"` na API.
 - `INTERNAL_TOKEN` (igual na API e aqui) protege as rotas de uso interno; `MCP_URL` aponta o servidor MCP.
 - Evidência de escopo: `npm run escopo -w app/whatsapp` (conecta como o motorista da T02 e tenta ver outras rotas).
-- Áudio ainda não é entendido: o agente pede para escrever (transcrição está no backlog).
+- Áudio é transcrito com Whisper via OpenRouter (`OPENROUTER_API_KEY`) e segue o mesmo caminho de uma mensagem
+  escrita (dá até para confirmar ou reiniciar falando). Sem a chave, o agente pede para escrever.
 - Hoje a API só aceita ocorrências da **transferência** (`POST /ocorrencias`). Para coleta e entrega,
   a API precisa ganhar o mesmo endpoint para essas pernas.
 
@@ -118,6 +119,7 @@ npm test -w app/whatsapp
 | `src/agente/ferramentas.ts` | ferramentas e o que cada uma pode fazer |
 | `src/agente/ficha.ts` | obrigatórios e resumo para o motorista conferir |
 | `src/agente/simulado.ts` | agente sem IA |
+| `src/transcricao.ts` | transcrição dos áudios (Whisper via OpenRouter) |
 | `src/estado.ts` | conversas, transcrição, deduplicação e trilha no Postgres |
 | `src/atendimento.ts` | endpoints do painel de atendimentos (token) |
 | `src/api.ts` | cliente da `app/api` |
