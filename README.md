@@ -43,6 +43,8 @@ Fastify + TypeScript + **PostgreSQL 17** (driver `pg`), empacotada em Docker (`a
 | `docker compose run --rm api npm run etl` | lê `docs/bronze_planilha.xlsx` e grava `bronze_*` e `gold_*` no Postgres |
 | `docker compose run --rm api npm run etl:check` | compara o gold com os JSON do front, campo a campo |
 | `docker compose run --rm api npm run eval` | mede o acerto da IA classificando os relatos reais do SAC (gabarito da bronze) |
+| `docker compose run --rm api npm run seguranca` | passa 4 relatos com instrução maliciosa pela extração e confere que a IA não obedeceu |
+| `docker compose run --rm api npm test` | testes de privacidade, guardas, ferramentas da ação e cenário de acidentes |
 
 Fora do Docker, os mesmos comandos são `npm run etl -w app/api`, `npm run etl:check -w app/api` e `npm run eval -w app/api`.
 Para a IA real, exporte `ANTHROPIC_API_KEY` antes do `docker compose up` (ou ponha em `app/api/.env` fora do Docker).
@@ -100,8 +102,11 @@ reference/    artifact original, só para consulta
 | Aba Guia de boas práticas | ✅ |
 | Identidade CheckRoute (design system v1.0): menu lateral, Visão geral, tokens, Montserrat | ✅ [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) |
 | API com o contrato, ações persistidas e ETL da bronze (gold idêntico aos JSON) | ✅ `app/api` |
-| IA: relato → ficha, ação sugerida do guia, registro de custo, eval com gabarito | ✅ `app/api` (falta a tela no front) |
-| Mapas (zona da cidade / região do Brasil), gráfico mês a mês, detalhe completo da rota, ações em acompanhamento + modal | ⏳ ver [docs/BACKLOG.md](docs/BACKLOG.md) |
+| IA: relato → ficha, ação sugerida com tool use, registro de custo, eval com gabarito | ✅ `app/api` |
+| Dados pessoais mascarados e guardas contra prompt injection (com testes) | ✅ `app/api` |
+| Acidentes plantados na T02 (BR-381) para a demo | ✅ cenário do ETL |
+| Mapas (zona da cidade / região do Brasil), gráfico mês a mês, detalhe completo da rota, ações em acompanhamento + modal | ✅ |
+| Telas de Ocorrências (registro com ficha revisável, recentes) e Ações (sugestão com IA, validar, descartar, histórico) | ✅ [docs/TELAS.md](docs/TELAS.md) §6–7 |
 
 ## Documentação
 

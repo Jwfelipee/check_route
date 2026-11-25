@@ -13,7 +13,6 @@ manual da marca, `tokens.json`, README técnico e PDF). Fonte da verdade no cód
    aparece como "—" ou "Não informado", nunca zero. Taxa com denominador zero = "Indisponível".
 4. **Estimado ≠ comprovado.** "Economia estimada" não usa verde; ação sugerida mostra a fonte do guia e só vale depois
    de validada (nada é aprovado automaticamente).
-5. **Base sintética identificada** na Visão geral.
 
 ## Cores (tokens.json → CSS)
 
@@ -23,7 +22,7 @@ manual da marca, `tokens.json`, README técnico e PDF). Fonte da verdade no cód
 | `brand.blue` / `action.primary` | `--brand-blue` / `--action-primary` | `#0645F5` | botão primário, item ativo, seleção, barras |
 | `action.hover` | `--action-hover` | `#0035C7` | hover do primário |
 | `action.focus` | `--action-focus` | `#0645F5` | anel de foco (2 px) |
-| `brand.lilac` | `--brand-lilac` | `#B184F5` | só destaque (selo "em breve" no menu); nunca texto pequeno sobre branco |
+| `brand.lilac` | `--brand-lilac` | `#B184F5` | só destaque (selo "gerado por IA", com texto em `--brand-lilac-ink`); nunca texto pequeno sobre branco |
 | `surface.canvas` | `--color-bg` | `#F5F7FB` | fundo da página |
 | `surface.card` | `--color-panel` | `#FFFFFF` | cards, cabeçalho |
 | `surface.subtle` | `--color-subtle` | `#EAF0FF` | trilho de barra, hover, bloco de ação sugerida |
@@ -71,8 +70,8 @@ Valores monetários alinhados à direita e números tabulares (`.num`).
 |---|---|---|
 | Visão geral (`#visao`) | `features/visao/VisaoGeral.tsx`: ocorrências únicas, perdas registradas, taxa por mil operações, score geral, perdas por etapa, ação prioritária, ranking financeiro | pronto |
 | Saúde das rotas (`#perna-<etapa>`) | seletor de etapa + `features/perna/PernaView.tsx` | pronto |
-| Ocorrências | captura do relato → ficha revisável (BACKLOG 10) | "em breve" no menu |
-| Ações | ações sugeridas, validadas e acompanhamento (BACKLOG 6 e 11) | "em breve" no menu |
+| Ocorrências (`#ocorrencias`) | `features/ocorrencias/`: registro pelo relato com ficha revisável e lista de recentes | pronto |
+| Ações (`#acoes`) | `features/acoes/`: rotas que pedem ação, sugestão com IA, validar/descartar, acompanhamento e histórico | pronto |
 | Guia de boas práticas (`#guia`) | `features/guia/Guia.tsx` | pronto |
 
 ## Componentes
@@ -87,6 +86,8 @@ Valores monetários alinhados à direita e números tabulares (`.num`).
 | `Chip` / `Pill` | `components/Chip.tsx` | situação (texto) e variação |
 | `Segmented` | `components/Segmented.tsx` | filtros; opção ativa em azul |
 | `BarList` | `components/BarList.tsx` | perdas por etapa, padrões de prejuízo |
+| `Modal` | `components/Modal.tsx` | diálogo (raio 16), foco preso, Esc fecha; "Validar ação e acompanhar" |
+| `MiniLine` | `components/MiniLine.tsx` | score da rota nos últimos meses, com tracejado no saudável |
 | `ScoreGauge` | `components/ScoreGauge.tsx` | meio contagiro do score |
 
 ## Acessibilidade

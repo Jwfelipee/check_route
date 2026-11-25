@@ -5,16 +5,12 @@ código de referência em `reference/artifact/sr_view.js` (nome do `dash.draw` e
 
 | # | Tarefa | Onde | Referência | Esforço |
 |---|---|---|---|---|
-| 1 | `ComboChart` barras + linha (mês a mês) com tooltip | `design-system/components/`, usar em `PernaView` §3.9 | `rede` | M |
-| 2 | `MapaCidade` (zonas) com clique que filtra `zona_*` | `features/perna/` + `useMapa()` | `mapacidade` | M |
-| 3 | `MapaBrasil` (regiões) com clique que filtra `regiao` | `features/perna/` | `mapa` | P |
 | 4 | Filtro de Região (coleta/entrega) restringindo os estados | `PernaView` filtros | `ufsel` | P |
-| 5 | Detalhe da rota: hero (gauge + barras das premissas + células), `MiniLine` 6 meses, ocorrências por tipo | `features/perna/RotaCard.tsx` | `rotas`, `cartao`, `miniScore` | G |
-| 6 | Ações: tabela, modal de validação, concluir/cancelar (usar `acoesRepo` + `useAcoes`, invalidar a query ao salvar) | `features/acoes/` | `acoes`, `blocoAcao` | M |
-| 7 | Link "ver no guia" que abre a aba e destaca a prática | `Guia.tsx`, `store.ts` | `guia` | P |
-| 8 | ~~Backend servindo os recursos de [DADOS.md](DADOS.md)~~ feito: API + ETL da bronze em `app/api` | `app/api` | — | ✅ |
-| 10 | Tela de captura do relato (texto + foto) → `POST /ocorrencias/extrair`, revisão da ficha → `POST /ocorrencias`, depois invalidar `['fontes']` | `features/captura/` | README (roteiro de chamadas) | M |
-| 11 | Botão "Sugerir com IA" no card da rota → `POST /acoes/sugerir` com os números de `calcSaudeRotas`, e abrir o modal de validação com o texto | `features/perna/` | DADOS.md (endpoints de IA) | P |
-| 9 | Teste visual rápido em 400 px de largura e revisão de acessibilidade (foco, aria) | todo o app | — | P |
+| 9 | Revisão de acessibilidade com leitor de tela (o layout já foi conferido em 375 px) | todo o app | — | P |
+| 12 | Eval da extração com gabarito campo a campo (10 a 20 relatos de acidente) e avaliador automático (LLM-as-judge) das ações sugeridas | `app/api/scripts/` | `pendencias.md` (ponto 5) | M |
+| 13 | Rodar `eval` e `seguranca` com a chave real e registrar os números em `tecnicas-e-criterios.md` | `app/api` | — | P |
+
+**Feitos:** 1 (mês a mês), 2 e 3 (mapas), 5 (detalhe da rota), 6 (ações e modal), 7 (ver no guia), 8 (API + ETL),
+10 (tela de ocorrências), 11 (sugerir com IA). Ver [TELAS.md](TELAS.md).
 
 P = até 1 h · M = 1–3 h · G = meio dia.
