@@ -7,11 +7,13 @@ import { PernaSelector } from '@/features/painel/PernaSelector';
 import { PernaView } from '@/features/perna/PernaView';
 import { Guia } from '@/features/guia/Guia';
 import { VisaoGeral } from '@/features/visao/VisaoGeral';
+import { Atendimentos } from '@/features/atendimento/Atendimentos';
 
 const TITULO: Record<Pagina, string> = {
   visao: 'Visão geral',
   rotas: 'Saúde das rotas',
   guia: 'Guia de boas práticas',
+  atendimentos: 'Atendimentos',
 };
 
 /** Casca do produto: menu lateral (248 px) + cabeçalho (64 px) + conteúdo com margem de 24 px. */
@@ -33,7 +35,7 @@ export function App() {
           </button>
           <div className="cr-head-t">
             <h1>{TITULO[pagina]}</h1>
-            <p>{periodo} | {pagina === 'rotas' ? 'Por etapa' : 'Todas as etapas'} | Dados sintéticos · posição de {ref ? fmt.data(ref.data) : '—'}</p>
+            <p>{pagina === 'atendimentos' ? 'Conversas do assistente de ocorrências no WhatsApp' : <>{periodo} | {pagina === 'rotas' ? 'Por etapa' : 'Todas as etapas'} | Dados sintéticos · posição de {ref ? fmt.data(ref.data) : '—'}</>}</p>
           </div>
         </header>
 
@@ -62,6 +64,8 @@ export function App() {
           )}
 
           {pagina === 'guia' && <Guia />}
+
+          {pagina === 'atendimentos' && <Atendimentos />}
         </main>
       </div>
     </div>

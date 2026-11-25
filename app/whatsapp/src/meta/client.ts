@@ -4,6 +4,7 @@
  * permite testar o fluxo inteiro sem a conta da Meta.
  */
 import { config } from '../config.js';
+import { registrarEvento, type Autor } from '../estado.js';
 
 const graph = (caminho: string) => `https://graph.facebook.com/${config.meta.versao}/${caminho}`;
 const auth = () => ({ authorization: `Bearer ${config.meta.token}` });
@@ -11,10 +12,12 @@ const auth = () => ({ authorization: `Bearer ${config.meta.token}` });
 export interface Enviada { para: string; tipo: 'texto' | 'botoes'; texto: string; botoes?: { id: string; titulo: string }[] }
 export const enviadasNoDryRun: Enviada[] = [];
 
-async function postar(corpo: Record<string, unknown>, registro: Enviada) {
+async function postar(corpo: Record<string, unknown>, registro: Enviada, autor: Autor) {
+  const transcricao = registro.texto + (registro.botoes ? `\n[${registro.botoes.map((b) => b.titulo).join(' | ')}]` : '');
   if (config.meta.dryRun) {
     enviadasNoDryRun.push(registro);
-    console.log(`[dry-run] → ${registro.para}: ${registro.texto}${registro.botoes ? ` [${registro.botoes.map((b) => b.titulo).join(' | ')}]` : ''}`);
+    console.log(`[dry-run] → ${registro.para}: ${transcricao.replace('\n', ' ')}`);
+    await registrarEvento(registro.para, autor, registro.tipo, transcricao);
     return;
   }
   const r = await fetch(graph(`${config.meta.phoneNumberId}/messages`), {
@@ -23,11 +26,12 @@ async function postar(corpo: Record<string, unknown>, registro: Enviada) {
     body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', ...corpo }),
   });
   if (!r.ok) throw new Error(`Meta respondeu ${r.status}: ${await r.text()}`);
+  await registrarEvento(registro.para, autor, registro.tipo, transcricao);
 }
 
 /** Texto livre. Só vale dentro da janela de 24 h desde a última mensagem do contato. */
-export const enviarTexto = (para: string, texto: string) =>
-  postar({ to: para, type: 'text', text: { preview_url: false, body: texto.slice(0, 4096) } }, { para, tipo: 'texto', texto });
+export const enviarTexto = (para: string, texto: string, autor: Autor = 'bot') =>
+  postar({ to: para, type: 'text', text: { preview_url: false, body: texto.slice(0, 4096) } }, { para, tipo: 'texto', texto }, autor);
 
 /** Até 3 botões de resposta rápida (título com no máximo 20 caracteres). */
 export const enviarBotoes = (para: string, texto: string, botoes: { id: string; titulo: string }[]) =>
@@ -42,6 +46,7 @@ export const enviarBotoes = (para: string, texto: string, botoes: { id: string; 
       },
     },
     { para, tipo: 'botoes', texto, botoes },
+    'bot',
   );
 
 /** Marca como lida (os dois tiques azuis) e mostra "digitando…". */

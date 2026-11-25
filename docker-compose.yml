@@ -60,6 +60,8 @@ services:
       WA_MODELO: ${WA_MODELO:-claude-opus-5-5}
       AI_PROVIDER: ${AI_PROVIDER:-}
       WA_NUMEROS_PERMITIDOS: ${WA_NUMEROS_PERMITIDOS:-}
+      WA_ADMIN_TOKEN: ${WA_ADMIN_TOKEN:-}
+      WA_CORS_ORIGENS: ${WA_CORS_ORIGENS:-}
     ports:
       - '7334:7334'
     depends_on:

@@ -23,6 +23,10 @@ export const config = {
   databaseUrl: env('DATABASE_URL', 'postgres://saude:saude@localhost:7432/saude_rotas'),
   modelo: env('WA_MODELO', 'claude-opus-5-5'),
   iaReal: env('AI_PROVIDER') !== 'fake' && !!(env('ANTHROPIC_API_KEY') || env('ANTHROPIC_AUTH_TOKEN')),
+  /** Token do painel de atendimentos (Authorization: Bearer). Vazio = endpoints /atendimento desligados. */
+  adminToken: env('WA_ADMIN_TOKEN'),
+  /** Origens do painel que podem chamar /atendimento (vírgula). Vazio = qualquer origem (o token continua obrigatório). */
+  corsOrigens: env('WA_CORS_ORIGENS').split(',').map((s) => s.trim()).filter(Boolean),
   numerosPermitidos: new Set(env('WA_NUMEROS_PERMITIDOS').split(',').map((n) => n.replace(/\D/g, '')).filter(Boolean)),
 };
 

@@ -1,39 +1,67 @@
 /**
  * Orquestra uma mensagem recebida: carrega a conversa, trata o que é regra de código
- * (número autorizado, áudio, botões Confirmar/Corrigir) e passa o resto para o agente.
- * Mensagens do mesmo telefone são processadas em fila, uma de cada vez.
+ * (número autorizado, áudio, botões Confirmar/Corrigir, comando de reinício, atendente humano)
+ * e passa o resto para o agente. Tudo do mesmo telefone (mensagens e ações do painel)
+ * passa por uma fila, uma coisa de cada vez.
  */
 import { api } from '../api.js';
 import { config, numeroPermitido } from '../config.js';
-import { carregar, recomecar, registrarTrilha, salvar, type Conversa } from '../estado.js';
+import { carregar, recomecar, registrarEvento, registrarTrilha, salvar, type Conversa } from '../estado.js';
 import { enviarTexto, marcarLida } from '../meta/client.js';
 import type { MensagemRecebida } from '../meta/webhook.js';
 import { turnoClaude } from './claude.js';
-import { faltandoNaFicha } from './ficha.js';
+import { COMANDO_REINICIAR, faltandoNaFicha, SAUDACAO } from './ficha.js';
 import { BOTAO_CONFIRMAR, BOTAO_CORRIGIR } from './ferramentas.js';
 import { turnoSimulado } from './simulado.js';
 
-const filas = new Map<string, Promise<void>>();
+const filas = new Map<string, Promise<unknown>>();
+
+/** Executa `fn` na fila do telefone (nunca em paralelo com outra mensagem ou ação do mesmo número). */
+export function naFila<T>(telefone: string, fn: () => Promise<T>): Promise<T> {
+  const anterior = filas.get(telefone) ?? Promise.resolve();
+  const atual = anterior.catch(() => undefined).then(fn);
+  filas.set(telefone, atual);
+  void atual.catch(() => undefined).finally(() => { if (filas.get(telefone) === atual) filas.delete(telefone); });
+  return atual;
+}
 
 export function processar(m: MensagemRecebida): Promise<void> {
-  const anterior = filas.get(m.de) ?? Promise.resolve();
-  const atual = anterior.then(() => tratar(m)).catch((e) => console.error(`[wa] erro com ${m.de}:`, e));
-  filas.set(m.de, atual);
-  void atual.finally(() => { if (filas.get(m.de) === atual) filas.delete(m.de); });
-  return atual;
+  return naFila(m.de, () => tratar(m)).catch((e) => console.error(`[wa] erro com ${m.de}:`, e));
 }
 
 const turno = (c: Conversa, entrada: string) => (config.iaReal ? turnoClaude : turnoSimulado)({ conversa: c }, entrada);
 
+function descrever(m: MensagemRecebida): { tipo: string; texto: string } {
+  switch (m.tipo) {
+    case 'texto': return { tipo: 'texto', texto: m.texto };
+    case 'imagem': return { tipo: 'imagem', texto: `[foto]${m.legenda ? ` ${m.legenda}` : ''}` };
+    case 'botao': return { tipo: 'botao', texto: `[botão] ${m.titulo}` };
+    case 'audio': return { tipo: 'audio', texto: '[áudio]' };
+    default: return { tipo: 'outro', texto: `[${m.original}]` };
+  }
+}
+
 async function tratar(m: MensagemRecebida) {
   await marcarLida(m.id);
+  const d = descrever(m);
+  await registrarEvento(m.de, 'motorista', d.tipo, d.texto);
+
   if (!numeroPermitido(m.de)) {
     await enviarTexto(m.de, 'Este número não está autorizado a registrar ocorrências. Fale com a sua transportadora.');
     return;
   }
   let c = await carregar(m.de, m.nome);
-  let resposta: string | null = null;
 
+  // Atendente humano no comando: o agente não responde. O texto entra no relato,
+  // para o agente saber o que foi dito se a conversa voltar para ele.
+  if (c.modo === 'humano') {
+    if (m.tipo === 'texto') c.relato = `${c.relato}\n${m.texto}`.trim();
+    if (m.tipo === 'imagem') c.foto_media_id = m.mediaId;
+    await salvar(c);
+    return;
+  }
+
+  let resposta: string | null = null;
   switch (m.tipo) {
     case 'audio':
       resposta = 'Ainda não consigo ouvir áudio. Pode escrever o que aconteceu? Se tiver foto, pode mandar também.';
@@ -45,32 +73,38 @@ async function tratar(m: MensagemRecebida) {
 
     case 'botao':
       if (m.botaoId === BOTAO_CONFIRMAR) {
-        resposta = await confirmar(c);
-        if (resposta.startsWith('✅')) c = recomecar(c);
+        const r = await confirmar(c);
+        resposta = r.texto;
+        if (r.ok) c = recomecar(c);
       } else if (m.botaoId === BOTAO_CORRIGIR) {
         c.aguardando_confirmacao = false;
         resposta = await turno(c, 'Quero corrigir a ficha.');
       }
       break;
 
-    case 'imagem': {
+    case 'imagem':
       c.foto_media_id = m.mediaId;
       if (m.legenda) c.relato = `${c.relato}\n${m.legenda}`.trim();
       resposta = await turno(c, `[O motorista enviou uma foto]${m.legenda ? ` com a legenda: ${m.legenda}` : ''}`);
       break;
-    }
 
-    case 'texto': {
+    case 'texto':
+      if (COMANDO_REINICIAR.test(m.texto)) {
+        c = recomecar(c);
+        await registrarEvento(m.de, 'sistema', 'reinicio', 'Conversa reiniciada pelo motorista');
+        resposta = SAUDACAO;
+        break;
+      }
       // Confirmação digitada ("sim", "confirmo") também vale, desde que haja resumo pendente.
       if (c.aguardando_confirmacao && /^\s*(sim|confirmo|confirmar|ok)\s*[.!]*\s*$/i.test(m.texto)) {
-        resposta = await confirmar(c);
-        if (resposta.startsWith('✅')) c = recomecar(c);
+        const r = await confirmar(c);
+        resposta = r.texto;
+        if (r.ok) c = recomecar(c);
         break;
       }
       c.relato = `${c.relato}\n${m.texto}`.trim();
       resposta = await turno(c, m.texto);
       break;
-    }
   }
 
   await salvar(c);
@@ -78,17 +112,69 @@ async function tratar(m: MensagemRecebida) {
 }
 
 /** Grava na API a ficha que o motorista viu e confirmou. Só o código chega aqui, nunca o modelo. */
-async function confirmar(c: Conversa): Promise<string> {
-  if (!c.aguardando_confirmacao || !c.ficha_pendente) return 'Não tenho nenhuma ocorrência esperando confirmação. Me conte o que aconteceu.';
-  const faltando = faltandoNaFicha(c.ficha_pendente);
-  if (faltando.length) return 'A ficha ainda está incompleta. Me diga o que falta e eu mando o resumo de novo.';
+async function confirmar(c: Conversa): Promise<{ ok: boolean; texto: string }> {
+  if (!c.aguardando_confirmacao || !c.ficha_pendente) return { ok: false, texto: 'Não tenho nenhuma ocorrência esperando confirmação. Me conte o que aconteceu.' };
+  if (faltandoNaFicha(c.ficha_pendente).length) return { ok: false, texto: 'A ficha ainda está incompleta. Me diga o que falta e eu mando o resumo de novo.' };
   const ficha = { ...c.ficha_pendente, relato: `${c.ficha_pendente.relato ?? c.relato}\n[via WhatsApp ${c.telefone}${c.nome ? `, ${c.nome}` : ''}]` };
   try {
     const oc = await api.registrar(ficha);
     await registrarTrilha(c.telefone, oc.id, ficha);
-    return `✅ Ocorrência registrada. Protocolo: *${oc.id}*.\nObrigado! Se precisar registrar outra, é só mandar mensagem.`;
+    await registrarEvento(c.telefone, 'sistema', 'registro', `Ocorrência registrada: ${oc.id}`);
+    return { ok: true, texto: `✅ Ocorrência registrada. Protocolo: *${oc.id}*.\nObrigado! Se precisar registrar outra, é só mandar mensagem.` };
   } catch (e) {
     console.error('[wa] falha ao registrar:', e);
-    return `Não consegui registrar agora (${(e as Error).message}). Tente apertar Confirmar de novo em alguns minutos.`;
+    return { ok: false, texto: `Não consegui registrar agora (${(e as Error).message}). Tente apertar Confirmar de novo em alguns minutos.` };
   }
 }
+
+// ---------- ações do painel de atendimentos ----------
+
+const MSG_ASSUMIU = (nome: string) => `Oi! Aqui é ${nome}, da equipe de operações. Vou continuar o seu atendimento por aqui.`;
+const MSG_DEVOLVEU = 'Obrigado! Agora o assistente automático volta a te atender. Se quiser recomeçar, mande *reiniciar*.';
+
+/** Zera a conversa (ficha, relato, histórico) e volta para o bot. Opcionalmente avisa o motorista. */
+export const reiniciarConversa = (telefone: string, por: string, avisar: boolean) =>
+  naFila(telefone, async () => {
+    await salvar(recomecar(await carregar(telefone)));
+    await registrarEvento(telefone, 'sistema', 'reinicio', `Conversa reiniciada no painel por ${por}`);
+    if (avisar) await enviarTexto(telefone, SAUDACAO);
+  });
+
+/** Atendente assume: o agente para de responder até alguém devolver. */
+export const assumirConversa = (telefone: string, atendente: string, avisar: boolean) =>
+  naFila(telefone, async () => {
+    const c = await carregar(telefone);
+    c.modo = 'humano';
+    c.atendente = atendente;
+    await salvar(c);
+    await registrarEvento(telefone, 'sistema', 'assumir', `${atendente} assumiu a conversa`);
+    if (avisar) await enviarTexto(telefone, MSG_ASSUMIU(atendente), 'atendente');
+  });
+
+/** Devolve ao bot. O que foi dito com o atendente vira uma nota no histórico do agente. */
+export const devolverConversa = (telefone: string, por: string, avisar: boolean, transcricaoHumana: string) =>
+  naFila(telefone, async () => {
+    const c = await carregar(telefone);
+    if (c.modo !== 'humano') return;
+    c.modo = 'bot';
+    c.atendente = null;
+    c.aguardando_confirmacao = false;
+    if (transcricaoHumana && c.historico.length) {
+      c.historico.push({
+        role: 'user',
+        content: `[Nota do sistema, não é o motorista: um atendente humano conversou com ele enquanto você estava pausado. Transcrição:\n${transcricaoHumana}\nContinue a partir daqui; se ele trouxe dados novos, chame analisar_relato.]`,
+      });
+    }
+    await salvar(c);
+    await registrarEvento(telefone, 'sistema', 'devolver', `Conversa devolvida ao bot por ${por}`);
+    if (avisar) await enviarTexto(telefone, MSG_DEVOLVEU, 'atendente');
+  });
+
+/** Mensagem escrita pelo atendente no painel. Só com a conversa assumida. */
+export const enviarComoAtendente = (telefone: string, texto: string) =>
+  naFila(telefone, async () => {
+    const c = await carregar(telefone);
+    if (c.modo !== 'humano') throw new Error('Assuma a conversa antes de escrever.');
+    await enviarTexto(telefone, texto, 'atendente');
+    await salvar(c); // atualiza atualizado_em
+  });
