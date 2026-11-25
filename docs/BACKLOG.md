@@ -12,7 +12,9 @@ código de referência em `reference/artifact/sr_view.js` (nome do `dash.draw` e
 | 5 | Detalhe da rota: hero (gauge + barras das premissas + células), `MiniLine` 6 meses, ocorrências por tipo | `features/perna/RotaCard.tsx` | `rotas`, `cartao`, `miniScore` | G |
 | 6 | Ações: tabela, modal de validação, concluir/cancelar (usar `acoesRepo` + `useAcoes`, invalidar a query ao salvar) | `features/acoes/` | `acoes`, `blocoAcao` | M |
 | 7 | Link "ver no guia" que abre a aba e destaca a prática | `Guia.tsx`, `store.ts` | `guia` | P |
-| 8 | Backend opcional servindo os recursos de [DADOS.md](DADOS.md). O `radar.db` do projeto `hackatown` pode alimentar `/ocorrencias` | `app/api` (já no workspace; ainda sem servidor nem script `dev`) | — | M |
+| 8 | ~~Backend servindo os recursos de [DADOS.md](DADOS.md)~~ feito: API + ETL da bronze em `app/api` | `app/api` | — | ✅ |
+| 10 | Tela de captura do relato (texto + foto) → `POST /ocorrencias/extrair`, revisão da ficha → `POST /ocorrencias`, depois invalidar `['fontes']` | `features/captura/` | README (roteiro de chamadas) | M |
+| 11 | Botão "Sugerir com IA" no card da rota → `POST /acoes/sugerir` com os números de `calcSaudeRotas`, e abrir o modal de validação com o texto | `features/perna/` | DADOS.md (endpoints de IA) | P |
 | 9 | Teste visual rápido em 400 px de largura e revisão de acessibilidade (foco, aria) | todo o app | — | P |
 
 P = até 1 h · M = 1–3 h · G = meio dia.

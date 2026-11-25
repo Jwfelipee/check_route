@@ -55,7 +55,52 @@ Com `VITE_API_URL=https://api.exemplo`, o app faz:
 Formatos exatos: schemas zod em `app/web/src/lib/types.ts`. O cálculo fica no front (igual ao artifact);
 se o volume crescer, mover `calcRotaMes` para o backend/SQL e expor `/rota_mes` pronto.
 
-### Ligação com o projeto `hackatown` (Radar de Ocorrências)
+A API (`app/api`) já serve esse contrato. Ocorrências vindas da bronze trazem também `protocolo` e
+`canal` (rastreabilidade até o SAC); as criadas pela demo trazem `detalhes` (ficha do acidente). O zod do
+front ignora esses campos extras.
+
+### Endpoints de IA (recorte da demo: Transferência)
+
+| Método | Caminho | Corpo → resposta |
+|---|---|---|
+| POST | `/ocorrencias/extrair` | `{relato, imagemBase64?, imagemTipo?, rota_id?}` → `{ok, ficha, faltando[], pergunta, meta}`. Não grava. `ok=false` quando falta tipo, rota, data/hora ou trecho, e `pergunta` diz o que pedir ao motorista |
+| POST | `/ocorrencias` | ficha revisada pela pessoa (`tipo`, `rota_id`, `data_hora`, `trecho`, `produto`, `custo_estimado` obrigatórios) → `Ocorrencia` gravada, status Aberta |
+| POST | `/acoes/sugerir` | `{rota_id, numeros: {chave: valor}, foco?, tipo_mais_caro?}` com os números que o front já calculou → `{pratica_id, acao, justificativa, numeros_usados, numeros_fora, pratica, meta}` |
+| GET | `/ia/uso` | chamadas de IA por operação: tokens, custo em US$ e latência |
+| GET | `/health` | `{ok, fonte}` (`gold` ou `json`) |
+
+`meta.modo` diz se respondeu o Claude (`claude`) ou o modo simulado (`simulado`, sem chave ou com falha).
+`numeros_fora` lista números citados na ação que não vieram do código (deve ficar vazio).
+
+## Base real: planilha bronze → gold
+
+A base real é a planilha `bronze_planilha` (22 abas de ERP, TMS, WMS, e-commerce, FIN, SAC e
+configuração; posição 2026-11-24). O ETL de `app/api` transforma essa planilha nos recursos acima:
+
+```bash
+npm run etl -w app/api        # lê docs/bronze_planilha.xlsx (ou app/api/data/bronze/) → SQLite
+npm run etl:check -w app/api  # compara o gold com os JSON de public/data, campo a campo
+```
+
+Hoje o gold sai **idêntico** aos JSON do front nos 5 recursos. Regras aplicadas:
+
+| Recurso | Regra |
+|---|---|
+| `rotas` | `tms_rotas` + `tms_locais` (coleta pela zona de origem, transferência/entrega pelo destino; região pela UF) + `erp_transportadoras` (CNPJ sem máscara) + `fin_tabela_frete` vigente (sem data de fim) |
+| `operacao_mes` coleta | mês da janela; coletas únicas (reenvio duplicado: vale a última ingestão); na janela = veículo chegou (1ª tentativa) até o fim da janela; 1ª tentativa = nenhuma tentativa frustrada; horas até o CD = entrada no WMS (UTC) − coletado_em |
+| `operacao_mes` transferência | mês da saída do CD; no prazo = chegada ≤ previsão; ocupação = `carga_m3` (vírgula) ÷ capacidade do veículo; horas no cross-docking = SAIDA − ENTRADA |
+| `operacao_mes` entrega | mês da saída para entrega; no prazo = data local da entrega ≤ data prometida; 1ª tentativa = entregue na tentativa 1 |
+| frete pago | soma dos CT-e não cancelados (normal + complementar) por operação |
+| `ocorrencias` | `sac_ocorrencias` por protocolo; código com espaço/minúscula/legado traduzido por `sac_tipos_ocorrencia`; rota pela operação ligada; produto pela categoria do SKU; custo = lançamentos efetivados + provisionados; ação e status pelo último evento (eventos duplicados removidos) |
+| `premissas` | `cfg_premissas` |
+| `referencia` | posição da aba Índice |
+
+O guia de boas práticas (`praticas.json`) não está na bronze e continua vindo do JSON.
+
+Para trocar a base de novo (outro banco, outra planilha), basta uma função que devolva esses recursos
+em `app/api/src/store.ts` e escolher por `DATA_SOURCE`.
+
+## Ligação com o projeto `hackatown` (Radar de Ocorrências)
 
 As ocorrências classificadas pelo pipeline Python (`data/radar.db`) podem alimentar `/ocorrencias`
 mapeando `tipo`, `produto`, `transportadora`, `custo` e `rota_id`. Rotas, operação mensal e premissas
