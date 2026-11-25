@@ -29,7 +29,7 @@ export async function criarServidor() {
   });
   await app.register(rotasAtendimento);
 
-  app.get('/health', async () => ({ ok: true, meta: config.meta.dryRun ? 'dry-run' : 'cloud-api', ia: config.iaReal ? config.modelo : 'simulado', api: config.apiUrl, painel: !!config.adminToken }));
+  app.get('/health', async () => ({ ok: true, meta: config.meta.dryRun ? 'dry-run' : 'cloud-api', ia: config.iaReal ? config.modelo : 'simulado', api: config.apiUrl, painel: !!config.adminToken, transcricao: config.transcricao.chave ? config.transcricao.modelo : 'desligada' }));
 
   app.get<{ Querystring: Record<string, string> }>('/webhook', async (req, reply) => {
     const q = req.query;

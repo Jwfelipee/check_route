@@ -1,18 +1,19 @@
 /**
  * Orquestra uma mensagem recebida: carrega a conversa, trata o que é regra de código
- * (número autorizado, áudio, botões Confirmar/Corrigir, comando de reinício, atendente humano)
+ * (número autorizado, transcrição de áudio, botões Confirmar/Corrigir, comando de reinício, atendente humano)
  * e passa o resto para o agente. Tudo do mesmo telefone (mensagens e ações do painel)
  * passa por uma fila, uma coisa de cada vez.
  */
 import { api } from '../api.js';
 import { config } from '../config.js';
 import { carregar, recomecar, registrarEvento, registrarTrilha, salvar, type Conversa } from '../estado.js';
-import { enviarTexto, marcarLida } from '../meta/client.js';
+import { baixarMidia, enviarTexto, marcarLida } from '../meta/client.js';
 import type { MensagemRecebida } from '../meta/webhook.js';
 import { turnoClaude } from './claude.js';
 import { COMANDO_REINICIAR, faltandoNaFicha, SAUDACAO } from './ficha.js';
 import { BOTAO_CONFIRMAR, BOTAO_CORRIGIR } from './ferramentas.js';
 import { turnoSimulado } from './simulado.js';
+import { transcrever, transcricaoAtiva } from '../transcricao.js';
 
 const filas = new Map<string, Promise<unknown>>();
 
@@ -41,6 +42,18 @@ function descrever(m: MensagemRecebida): { tipo: string; texto: string } {
   }
 }
 
+/** Baixa o áudio da Meta e transcreve. null = falhou ou não havia fala. */
+async function textoDoAudio(m: Extract<MensagemRecebida, { tipo: 'audio' }>): Promise<string | null> {
+  try {
+    const midia = await baixarMidia(m.mediaId);
+    const texto = await transcrever(Buffer.from(midia.base64, 'base64'), midia.mime);
+    return texto || null;
+  } catch (e) {
+    console.error(`[wa] falha ao transcrever áudio de ${m.de}:`, e);
+    return null;
+  }
+}
+
 async function tratar(m: MensagemRecebida) {
   await marcarLida(m.id);
   const d = descrever(m);
@@ -62,6 +75,19 @@ async function tratar(m: MensagemRecebida) {
   let c = await carregar(m.de, contato.nome);
   c.contato = contato;
 
+  // Áudio vira texto (só de contato cadastrado: a transcrição custa por segundo). Daí em diante
+  // segue o mesmo caminho de uma mensagem escrita: relato, "sim" para confirmar, "reiniciar".
+  let viaAudio = false;
+  let audioIlegivel = false;
+  if (m.tipo === 'audio' && transcricaoAtiva() && config.meta.token) {
+    const texto = await textoDoAudio(m);
+    if (texto) {
+      await registrarEvento(m.de, 'motorista', 'transcricao', `[áudio transcrito] ${texto}`);
+      m = { tipo: 'texto', id: m.id, de: m.de, nome: m.nome, texto };
+      viaAudio = true;
+    } else audioIlegivel = true;
+  }
+
   // Atendente humano no comando: o agente não responde. O texto entra no relato,
   // para o agente saber o que foi dito se a conversa voltar para ele.
   if (c.modo === 'humano') {
@@ -74,11 +100,13 @@ async function tratar(m: MensagemRecebida) {
   let resposta: string | null = null;
   switch (m.tipo) {
     case 'audio':
-      resposta = 'Ainda não consigo ouvir áudio. Pode escrever o que aconteceu? Se tiver foto, pode mandar também.';
+      resposta = audioIlegivel
+        ? 'Não consegui entender o áudio. Pode mandar de novo ou escrever o que aconteceu?'
+        : 'Ainda não consigo ouvir áudio. Pode escrever o que aconteceu? Se tiver foto, pode mandar também.';
       break;
 
     case 'outro':
-      resposta = 'Consigo receber texto e foto. Me conte por escrito o que aconteceu na viagem.';
+      resposta = 'Consigo receber texto, áudio e foto. Me conte o que aconteceu na viagem.';
       break;
 
     case 'botao':
@@ -113,7 +141,7 @@ async function tratar(m: MensagemRecebida) {
         break;
       }
       c.relato = `${c.relato}\n${m.texto}`.trim();
-      resposta = await turno(c, m.texto);
+      resposta = await turno(c, viaAudio ? `[Áudio transcrito] ${m.texto}` : m.texto);
       break;
   }
 

@@ -22,6 +22,13 @@ export const config = {
   apiUrl: env('API_URL', 'http://localhost:7333').replace(/\/$/, ''),
   databaseUrl: env('DATABASE_URL', 'postgres://saude:saude@localhost:7432/saude_rotas'),
   modelo: env('WA_MODELO', 'claude-opus-5-5'),
+  /** Transcrição de áudio (Whisper via OpenRouter). Sem chave = desligada (o agente pede para escrever). */
+  transcricao: {
+    chave: env('OPENROUTER_API_KEY'),
+    modelo: env('WA_TRANSCRICAO_MODELO', 'openai/whisper-1'),
+    url: env('OPENROUTER_URL', 'https://openrouter.ai/api/v1').replace(/\/$/, ''),
+    idioma: env('WA_TRANSCRICAO_IDIOMA', 'pt'),
+  },
   iaReal: env('AI_PROVIDER') !== 'fake' && !!(env('ANTHROPIC_API_KEY') || env('ANTHROPIC_AUTH_TOKEN')),
   /** Token do painel de atendimentos (Authorization: Bearer). Vazio = endpoints /atendimento desligados. */
   adminToken: env('WA_ADMIN_TOKEN'),
