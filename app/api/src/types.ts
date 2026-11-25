@@ -104,8 +104,8 @@ export interface Acao {
   concluida_em?: string;
   cancelada_em?: string;
   descartada_em?: string;
-  /** De onde veio o texto da ação: regra do guia ou IA (com as ferramentas que ela consultou). */
-  origem_sugestao?: 'regra' | 'ia';
+  /** De onde veio o texto: IA ('ia_contexto' = depois de a pessoa dar detalhes). 'regra' só existe em ações antigas. */
+  origem_sugestao?: 'regra' | 'ia' | 'ia_contexto';
 }
 
 export interface Fontes {

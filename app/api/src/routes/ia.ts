@@ -191,7 +191,7 @@ export async function rotasIa(app: FastifyInstance) {
           return { ...u, titulo: g.titulo, prazo_dias: g.prazo_dias, esforco: g.esforco };
         }),
         // Números que vieram do código: os do front e os que as ferramentas devolveram à IA.
-        numeros_fora: numerosFora(dados.acao, [pedido.numeros, consultas.map((c) => c.resultado), { km: rota!.km }]),
+        numeros_fora: numerosFora(dados.acao.replace(/\b[A-Z]{3}-\d{2}\b/g, ''), [pedido.numeros, consultas.map((c) => c.resultado), { km: rota!.km }]),
         ferramentas_chamadas: dados.ferramentas_chamadas,
         privacidade,
         guardas,

@@ -11,7 +11,7 @@ const emDias = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString(
  * responsável e prazo. Sem os três campos, não confirma.
  */
 export function ValidarAcaoModal({ rota, acaoSugerida, praticaId, prazoDias, origem, aberto, onFechar }: {
-  rota: SaudeRota; acaoSugerida: string; praticaId: string | null; prazoDias?: number; origem: 'regra' | 'ia';
+  rota: SaudeRota; acaoSugerida: string; praticaId: string | null; prazoDias?: number; origem: 'ia' | 'ia_contexto';
   aberto: boolean; onFechar: () => void;
 }) {
   const criar = useCriarAcao();

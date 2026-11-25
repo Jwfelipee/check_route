@@ -84,7 +84,31 @@ export function useRegistrarOcorrencia() {
   });
 }
 
-export const useSugerirAcao = () => useMutation({ mutationFn: iaApi.sugerir });
+/**
+ * Sugestão de ação da rota, sempre por IA. A API guarda a última versão e só gera outra quando os
+ * dados da rota mudam, então abrir a rota de novo não custa uma chamada. `habilitado` segura a
+ * geração até o bloco aparecer na tela.
+ */
+export function useSugestaoAcao(rota: SaudeRota, habilitado: boolean) {
+  const numeros = numerosDaRota(rota);
+  return useQuery({
+    queryKey: ['sugestao', rota.rota_id, numeros],
+    queryFn: () => iaApi.sugerir({ rota_id: rota.rota_id, numeros, foco: rota.foco_chave, tipo_mais_caro: rota.tipo_top }),
+    enabled: habilitado && temApi,
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+/** "Dar detalhes": a pessoa conta o que a IA não vê nos dados e ela sugere de novo. */
+export function useDarDetalhes(rota: SaudeRota) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (contexto: string) =>
+      iaApi.sugerir({ rota_id: rota.rota_id, numeros: numerosDaRota(rota), foco: rota.foco_chave, tipo_mais_caro: rota.tipo_top, contexto }),
+    onSuccess: (s) => qc.setQueryData(['sugestao', rota.rota_id, numerosDaRota(rota)], s),
+  });
+}
 
 /** Números da rota já calculados no front, enviados à IA (ela não recalcula nada). */
 export function numerosDaRota(r: SaudeRota): Record<string, number | string | null> {

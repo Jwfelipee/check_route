@@ -126,8 +126,8 @@ export async function sugerirAcaoFake(
     produto: String(cargas?.cargas_mais_afetadas?.[0]?.produto ?? ctx.numeros.produto_mais_afetado ?? 'carga').toLowerCase(),
   };
   const usados: string[] = [];
-  const base = principal.acao.replace(/\{(\w+)\}/g, (m, k: string) => {
-    if (valores[k] === undefined || valores[k] === null) return m;
+  const base = principal.acao.replace(/\{(\w+)\}/g, (_m, k: string) => {
+    if (valores[k] === undefined || valores[k] === null) return 'vários';
     usados.push(String(valores[k]));
     return String(valores[k]);
   });
