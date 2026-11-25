@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import type { Filtros, Perna, Situacao } from '@/lib/types';
 
-export type Pagina = 'visao' | 'rotas' | 'guia';
+export type Pagina = 'visao' | 'rotas' | 'ocorrencias' | 'acoes' | 'guia';
 
 interface Estado {
   pagina: Pagina;
@@ -10,21 +10,25 @@ interface Estado {
   filtros: Filtros;
   situacao: Partial<Record<Perna, Situacao | ''>>;
   menuAberto: boolean;
+  /** Prática do guia a destacar quando se chega pelo link "Ver no guia". */
+  praticaDestaque: string | null;
   setPagina: (p: Pagina) => void;
   setPerna: (p: Perna) => void;
   abrirRota: (p: Perna) => void;
   setFiltro: (k: keyof Filtros, v: string) => void;
   setSituacao: (p: Perna, s: Situacao | '') => void;
   setMenuAberto: (v: boolean) => void;
+  abrirPratica: (id: string) => void;
 }
 
-// Links diretos: #visao, #guia, #perna-coleta|transferencia|entrega.
+// Links diretos: #visao, #ocorrencias, #acoes, #guia, #perna-coleta|transferencia|entrega.
 const hash = () => location.hash.replace('#', '');
 const pernaDoHash = (): Perna => {
   const h = hash().replace('perna-', '');
   return h === 'transferencia' || h === 'entrega' ? h : 'coleta';
 };
-const paginaDoHash = (): Pagina => (hash().startsWith('perna-') ? 'rotas' : hash() === 'guia' ? 'guia' : 'visao');
+const PAGINAS: Pagina[] = ['visao', 'ocorrencias', 'acoes', 'guia'];
+const paginaDoHash = (): Pagina => (hash().startsWith('perna-') ? 'rotas' : (PAGINAS.find((p) => p === hash()) ?? 'visao'));
 const gravaHash = (h: string) => history.replaceState(null, '', '#' + h);
 
 export const useFiltros = create<Estado>((set, get) => ({
@@ -33,6 +37,7 @@ export const useFiltros = create<Estado>((set, get) => ({
   filtros: { uf_coleta: 'SP', uf_entrega: 'SP', zona_coleta: '', zona_entrega: '', regiao: '' },
   situacao: {},
   menuAberto: false,
+  praticaDestaque: null,
   setPagina: (pagina) => {
     gravaHash(pagina === 'rotas' ? 'perna-' + get().perna : pagina);
     set({ pagina, menuAberto: false });
@@ -43,4 +48,5 @@ export const useFiltros = create<Estado>((set, get) => ({
   setFiltro: (k, v) => set((s) => ({ filtros: { ...s.filtros, [k]: v } })),
   setSituacao: (p, v) => set((s) => ({ situacao: { ...s.situacao, [p]: v } })),
   setMenuAberto: (menuAberto) => set({ menuAberto }),
+  abrirPratica: (id) => { gravaHash('guia'); set({ pagina: 'guia', praticaDestaque: id, menuAberto: false }); },
 }));

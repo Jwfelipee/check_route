@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { Alert, BarList, Button, Card, Chip, Kpi, tomDaSituacao, tomDoScore } from '@/design-system';
-import { usePainel } from '@/data/hooks';
+import { BarList, Card, Chip, Kpi, tomDaSituacao, tomDoScore } from '@/design-system';
+import { useAcaoAtivaPorRota, usePainel } from '@/data/hooks';
+import { SugestaoAcao } from '@/features/acoes/SugestaoAcao';
 import { fmt } from '@/lib/format';
 import { faixas, NOME_PERNA } from '@/lib/score';
 import { PERNAS } from '@/lib/types';
@@ -15,7 +16,8 @@ const taxaPorMil = (ocorrencias: number, unidades: number) => (unidades > 0 ? (o
  */
 export function VisaoGeral() {
   const { data, isLoading } = usePainel();
-  const { abrirRota, setPagina } = useFiltros();
+  const abrirRota = useFiltros((s) => s.abrirRota);
+  const ativas = useAcaoAtivaPorRota();
   const f = data ? faixas(data.fontes.premissas) : { ok: 85, atencao: 65 };
   const ref = data?.fontes.referencia;
 
@@ -43,16 +45,14 @@ export function VisaoGeral() {
   }, [data, ref]);
 
   const rotasDoMes = data?.saudeRotas ?? [];
-  const prioritaria = [...rotasDoMes].filter((r) => r.score != null).sort((a, b) => a.score! - b.score! || b.prejuizo - a.prejuizo)[0];
+  // Pior rota que ainda não tem ação em andamento (se todas tiverem, a pior de todas).
+  const porScore = [...rotasDoMes].filter((r) => r.score != null).sort((a, b) => a.score! - b.score! || b.prejuizo - a.prejuizo);
+  const prioritaria = porScore.find((r) => !ativas.has(r.rota_id)) ?? porScore[0];
   const ranking = [...rotasDoMes].sort((a, b) => b.prejuizo - a.prejuizo).slice(0, 5);
   const carregando = isLoading || !resumo;
 
   return (
     <section className="cr-stack" id="visao-geral">
-      <Alert tone="info" title="Base sintética">
-        Todos os números desta demonstração são fictícios, gerados para o Hackathon ETEG 2026. Nenhum dado real de cliente.
-      </Alert>
-
       <div className="ds-kpis cr-kpis-4">
         <Kpi id="kpi-ocorrencias" loading={carregando} label="Ocorrências únicas" value={fmt.int(resumo?.ocorrencias)}
           note={ref ? `${fmt.mesNome(ref.mes)} até ${fmt.data(ref.data).slice(0, 5)} · todas as etapas` : undefined} />
@@ -71,7 +71,7 @@ export function VisaoGeral() {
             detail: `${fmt.n1(taxaPorMil(e.ocorrencias, e.unidades))} por mil`,
           }))} />
           <p className="ds-note" style={{ margin: 'var(--space-4) 0 0' }}>
-            Economia estimada no mês: <b>{fmt.brlk(resumo?.economia)}</b>. É uma estimativa com as metas das premissas, não economia comprovada.
+            Economia estimada no mês, com as metas das premissas: <b>{fmt.brlk(resumo?.economia)}</b>.
           </p>
         </Card>
 
@@ -83,14 +83,9 @@ export function VisaoGeral() {
                 <span>{NOME_PERNA[prioritaria.perna]} · score {fmt.int(prioritaria.score)}/100</span>
               </div>
               <b className="cr-acao-r">{prioritaria.rota}</b>
-              <p className="cr-acao-x">{prioritaria.acao}</p>
-              {prioritaria.pratica_id && (
-                <p className="ds-note" style={{ margin: 0 }}>Fonte: guia de boas práticas, {prioritaria.pratica_id} · {prioritaria.pratica}</p>
-              )}
-              <p className="ds-note" style={{ margin: 0 }}>É uma sugestão: só vale depois de validada, com responsável e prazo.</p>
-              <div className="cr-acao-b">
-                <Button onClick={() => abrirRota(prioritaria.perna)}>Abrir a rota</Button>
-                <Button variant="secondary" onClick={() => setPagina('guia')}>Ver no guia</Button>
+              <SugestaoAcao rota={prioritaria} />
+              <div>
+                <button type="button" className="cr-link" onClick={() => abrirRota(prioritaria.perna)}>Abrir a rota em {NOME_PERNA[prioritaria.perna]}</button>
               </div>
             </div>
           ) : (

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useFiltros } from '@/app/store';
 import { Chip, Segmented } from '@/design-system';
 import { useFontes } from '@/data/hooks';
 import { NOME_PERNA } from '@/lib/score';
@@ -7,7 +8,15 @@ import { PERNAS, type Perna } from '@/lib/types';
 /** Aba "Guia de boas práticas": repositório por perna (public/data/praticas.json). */
 export function Guia() {
   const { data } = useFontes();
+  const destaque = useFiltros((s) => s.praticaDestaque);
   const [filtro, setFiltro] = useState<Perna | ''>('');
+  // Chegando por "Ver no guia": rola até a prática e a destaca.
+  useEffect(() => {
+    if (!destaque || !data) return;
+    const el = document.getElementById('pratica-' + destaque);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.focus({ preventScroll: true });
+  }, [destaque, data]);
   const pernas = PERNAS.filter((p) => !filtro || p === filtro);
   return (
     <section className="sr-perna" id="guia">
@@ -22,7 +31,7 @@ export function Guia() {
           <h3 style={{ margin: '0 0 var(--space-3)', fontSize: 'var(--fs-section)', lineHeight: 'var(--lh-section)', fontWeight: 700 }}>{NOME_PERNA[perna]}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: 'var(--gap-md)' }}>
             {(data?.praticas ?? []).filter((p) => p.perna === perna).map((p) => (
-              <article key={p.id} id={'pratica-' + p.id} className="ds-card" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <article key={p.id} id={'pratica-' + p.id} tabIndex={-1} data-destaque={destaque === p.id || undefined} className="ds-card cr-pratica" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Chip>{p.id}</Chip><b style={{ fontSize: 'var(--fs-md)' }}>{p.titulo}</b></div>
                 <div className="ds-caption">Quando usar</div><p style={{ margin: 0 }}>{p.quando_usar}</p>
                 <div className="ds-caption">Como fazer</div>

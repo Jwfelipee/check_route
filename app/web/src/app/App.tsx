@@ -7,10 +7,14 @@ import { PernaSelector } from '@/features/painel/PernaSelector';
 import { PernaView } from '@/features/perna/PernaView';
 import { Guia } from '@/features/guia/Guia';
 import { VisaoGeral } from '@/features/visao/VisaoGeral';
+import { OcorrenciasPagina } from '@/features/ocorrencias/OcorrenciasPagina';
+import { AcoesPagina } from '@/features/acoes/AcoesPagina';
 
 const TITULO: Record<Pagina, string> = {
   visao: 'Visão geral',
   rotas: 'Saúde das rotas',
+  ocorrencias: 'Ocorrências',
+  acoes: 'Ações',
   guia: 'Guia de boas práticas',
 };
 
@@ -33,7 +37,7 @@ export function App() {
           </button>
           <div className="cr-head-t">
             <h1>{TITULO[pagina]}</h1>
-            <p>{periodo} | {pagina === 'rotas' ? 'Por etapa' : 'Todas as etapas'} | Dados sintéticos · posição de {ref ? fmt.data(ref.data) : '—'}</p>
+            <p>{periodo} | {pagina === 'rotas' ? 'Por etapa' : 'Todas as etapas'} · posição de {ref ? fmt.data(ref.data) : '—'}</p>
           </div>
         </header>
 
@@ -61,6 +65,8 @@ export function App() {
             </>
           )}
 
+          {pagina === 'ocorrencias' && <OcorrenciasPagina />}
+          {pagina === 'acoes' && <AcoesPagina />}
           {pagina === 'guia' && <Guia />}
         </main>
       </div>

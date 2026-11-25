@@ -25,7 +25,7 @@ export const PERNA_CFG: Record<Perna, {
   },
   transferencia: {
     titulo: 'Transferência', en: 'middle mile', unidade: ['viagem', 'viagens'],
-    descricao: 'Do CD Cajamar até os hubs regionais, passando pelo cross-docking. O que mais pesa nesta perna: caminhão saindo com espaço vazio, carga parada no cross-docking, erro de triagem, avaria no manuseio e roubo de carga.',
+    descricao: 'Do CD Cajamar até os hubs regionais, passando pelo cross-docking. O que mais pesa nesta perna: acidentes na estrada (colisão, tombamento, saída de pista e avaria por frenagem), caminhão saindo com espaço vazio, carga parada no cross-docking, erro de triagem e avaria no manuseio.',
     kpiPrazo: 'Chegadas no hub no prazo',
     kpiChave: { label: 'Ocupação média do caminhão', campo: 'ocupacao' },
     economiaNota: 'com a meta de ocorrências, o frete orçado e o caminhão na ocupação meta',

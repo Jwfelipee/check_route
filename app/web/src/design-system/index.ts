@@ -8,3 +8,5 @@ export * from './components/ScoreGauge';
 export * from './tone';
 export * from './components/Icon';
 export * from './components/Alert';
+export * from './components/Modal';
+export * from './components/MiniLine';

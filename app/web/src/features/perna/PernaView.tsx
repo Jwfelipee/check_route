@@ -1,10 +1,14 @@
 import { BarList, Card, Chip, Kpi, Pill, Segmented, tomDaSituacao, tomDaVariacao, tomDoScore, type Tom } from '@/design-system';
-import { usePainel } from '@/data/hooks';
+import { useAcaoAtivaPorRota, usePainel } from '@/data/hooks';
 import { fmt } from '@/lib/format';
 import { faixas, NOME_REGIAO, passaFiltro, pilares } from '@/lib/score';
 import type { Perna, Situacao } from '@/lib/types';
 import { useFiltros } from '@/app/store';
 import { PERNA_CFG } from './config';
+import { RotaDetalhe } from './RotaDetalhe';
+import { MapaBrasil, MapaCidade } from './Mapas';
+import { MesAMes } from './MesAMes';
+import { AcoesTabela } from '@/features/acoes/AcoesTabela';
 
 const SITUACOES = [
   { value: '' as const, label: 'Todas' },
@@ -15,12 +19,13 @@ const SITUACOES = [
 
 /**
  * Uma perna da operação (#perna-coleta, #perna-transferencia, #perna-entrega).
- * Ordem das seções igual à do artifact. Ver docs/TELAS.md para o que falta em cada bloco.
+ * Ordem das seções igual à do artifact (especificação em docs/TELAS.md).
  */
 export function PernaView({ perna }: { perna: Perna }) {
   const cfg = PERNA_CFG[perna];
   const { data, isLoading } = usePainel();
   const { filtros, setFiltro, situacao, setSituacao } = useFiltros();
+  const ativas = useAcaoAtivaPorRota();
   const f = data ? faixas(data.fontes.premissas) : { ok: 85, atencao: 65 };
   const k = data?.kpis.find((x) => x.perna === perna);
   const meta = (chave: string) => data?.fontes.premissas.find((p) => p.perna === perna && p.chave === chave)?.nota_cem;
@@ -74,16 +79,16 @@ export function PernaView({ perna }: { perna: Perna }) {
           note={<>{variacao(k?.['delta_' + cfg.kpiChave.campo] as number, fmt.spp)} sobre o mês anterior · meta <span>{fmt.pct(meta(cfg.kpiChave.campo))}</span></>} />
         <Kpi id={`kpi-prejuizo-${perna}`} loading={isLoading} label="Prejuízo com ocorrências no mês" value={fmt.brlk(k?.prejuizo)}
           note={<><span>{fmt.int(k?.ocorrencias)}</span> ocorrências, <span>{fmt.int(k?.abertas)}</span> ainda em aberto</>} />
-        <Kpi id={`kpi-economia-${perna}`} loading={isLoading} label="Economia estimada no mês" value={fmt.brlk(k?.economia)} note={<>{cfg.economiaNota}. Estimativa, não economia comprovada.</>} />
+        <Kpi id={`kpi-economia-${perna}`} loading={isLoading} label="Economia estimada no mês" value={fmt.brlk(k?.economia)} note={cfg.economiaNota} />
         <div className="ds-kpi" id={'mapa-' + perna}>
           <div className="ds-kpi-l">{cfg.temMapaCidade ? 'Score por zona da cidade' : 'Score por região do hub'}</div>
-          <div className="sr-todo">A fazer: {cfg.temMapaCidade ? 'MapaCidade' : 'MapaBrasil'} (D3 + public/data/mapa.json). Clique filtra {cfg.temMapaCidade ? 'a zona' : 'a região'}. Ver docs/TELAS.md §3.4.</div>
+          {perna === 'transferencia' ? <MapaBrasil perna={perna} /> : <MapaCidade perna={perna} />}
         </div>
       </div>
 
       <Card id={'rotas-' + perna} title={`Rotas de ${cfg.titulo.toLowerCase()}`}
         actions={<Segmented label={`Filtrar as rotas de ${cfg.titulo.toLowerCase()} pela situação`} value={filtroSit} onChange={(v) => setSituacao(perna, v as Situacao | '')} options={SITUACOES} />}
-        note={`Cada rota recebe um score de 0 a 100 pelas cinco premissas da ${cfg.titulo.toLowerCase()}. As piores aparecem primeiro. Clique em uma rota para ver a ação sugerida.`}>
+        note={`Cada rota recebe um score de 0 a 100 pelas cinco premissas da ${cfg.titulo.toLowerCase()}. As piores aparecem primeiro. Abra uma rota para ver o detalhe e a ação.`}>
         <div className="sr-rotas">
           {rotas.map((r) => (
             <details key={r.rota_id} className="sr-rc" data-c={tomDaSituacao(r.situacao) || undefined}>
@@ -92,26 +97,24 @@ export function PernaView({ perna }: { perna: Perna }) {
                   <b>{r.rota}</b>
                   <Chip tone={tomDaSituacao(r.situacao)}>{r.situacao}</Chip>
                   <span className="ds-muted" style={{ fontSize: 13 }}>{r.transportadora}</span>
+                  {ativas.has(r.rota_id) && <Chip tone="warn">Em acompanhamento</Chip>}
                   <span className="sr-rpre">Score {fmt.int(r.score)}/100 <Pill tone={tomDaVariacao(r.delta_score)}>{fmt.sint(r.delta_score)}</Pill></span>
                 </div>
                 <div className="ds-muted" style={{ fontSize: 13 }}>
-                  {fmt.int(r.unidades)} {cfg.unidade[1]} · prejuízo {fmt.brl(r.prejuizo)} em {r.ocorrencias} ocorrências · mais tira pontos: <b>{r.foco ?? '—'}</b>
+                  {fmt.int(r.unidades)} {cfg.unidade[1]} · prejuízo {fmt.brl(r.prejuizo)} em {r.ocorrencias} ocorrências
+                  {r.acidentes > 0 && <> · <b data-c="bad">{fmt.n1(r.acidentes_mil)} acidentes por mil {cfg.unidade[1]}</b></>}
+                  {' '}· mais tira pontos: <b>{r.foco ?? '—'}</b>
                 </div>
               </summary>
-              <div className="sr-acao">
-                <b>Ação sugerida · aguardando validação</b>
-                <span>{r.acao}</span>
-                {r.pratica_id && <div className="ds-muted" style={{ fontSize: 13, marginTop: 4 }}>Fonte: guia de boas práticas, {r.pratica_id} · {r.pratica}</div>}
-              </div>
-              <div className="sr-todo" style={{ marginTop: 10 }}>A fazer no detalhe: contagiro + barras das 5 premissas, mini gráfico do score (6 meses), ocorrências por tipo da rota e botão "Validar e acompanhar". Ver docs/TELAS.md §3.5.</div>
+              <RotaDetalhe rota={r} />
             </details>
           ))}
           {!isLoading && !rotas.length && <p className="ds-note">Nenhuma rota nessa situação neste mês.</p>}
         </div>
       </Card>
 
-      <Card id={'acoes-' + perna} title="Ações em acompanhamento" note="Ações sugeridas que alguém validou, com responsável e prazo. O score da rota no dia da validação fica guardado para comparar com o de hoje.">
-        <div className="sr-todo">A fazer: tabela de ações (src/data/acoes.ts já tem o repositório) + modal de validação. Ver docs/TELAS.md §3.6.</div>
+      <Card id={'acoes-' + perna} title="Ações em acompanhamento" note="Ações que alguém validou, com responsável e prazo. O score da rota no dia da validação fica guardado para comparar com o de hoje.">
+        <AcoesTabela perna={perna} modo="ativas" vazio='Nenhuma ação em acompanhamento. Abra uma rota e use "Validar e acompanhar".' />
       </Card>
 
       <Card id={'padroes-' + perna} title={`Onde se concentra o prejuízo da ${cfg.titulo.toLowerCase()}`} note="Ocorrências do mês somadas por tipo, produto e transportadora. A barra é o custo; ao lado, quantas ocorrências e a parte do prejuízo.">
@@ -132,6 +135,7 @@ export function PernaView({ perna }: { perna: Perna }) {
             <thead><tr>
               <th>Rota</th><th>Transportadora</th><th className="num">Score</th>
               {cfg.ranking.map((c) => <th key={c.campo} className="num">{c.label}</th>)}
+              {perna === 'transferencia' && <th className="num">Acidentes / mil viagens</th>}
               <th className="num">Prejuízo</th><th className="num">Economia estimada</th><th>Situação</th>
             </tr></thead>
             <tbody>
@@ -143,6 +147,7 @@ export function PernaView({ perna }: { perna: Perna }) {
                     const nt = r[`nota_${c.campo}`] as number | null;
                     return <td key={c.campo} className="num" data-c={nt != null && nt < f.atencao ? 'bad' : undefined}>{fmt[c.fmt]((r as any)[c.campo])}</td>;
                   })}
+                  {perna === 'transferencia' && <td className="num" data-c={r.acidentes > 0 ? 'bad' : undefined}>{r.acidentes_mil == null ? '—' : fmt.n1(r.acidentes_mil)}</td>}
                   <td className="num">{fmt.brl(r.prejuizo)}</td><td className="num">{fmt.brl(r.economia)}</td>
                   <td><Chip tone={tomDaSituacao(r.situacao)}>{r.situacao}</Chip></td>
                 </tr>
@@ -153,7 +158,7 @@ export function PernaView({ perna }: { perna: Perna }) {
       </Card>
 
       <Card id={'mes-' + perna} title={`${cfg.titulo} mês a mês`} note="Barras: prejuízo com ocorrências. Linha: score médio, ponderado pelas unidades de cada rota. O mês atual, marcado com *, vai até a data da posição.">
-        <div className="sr-todo">A fazer: gráfico combinado barras + linha em D3 (dados prontos em usePainel().data.redeMes). Ver docs/TELAS.md §3.9.</div>
+        <MesAMes perna={perna} />
       </Card>
 
       <details className="ds-card" id={'premissas-' + perna}>
