@@ -1,0 +1,44 @@
+# Postgres + API do painel.
+#   docker compose up -d --build                 # sobe banco (7432) e API (7333)
+#   docker compose run --rm api npm run etl      # planilha bronze (docs/) → Postgres
+#   docker compose run --rm api npm run etl:check
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: saude
+      POSTGRES_PASSWORD: saude
+      POSTGRES_DB: saude_rotas
+    ports:
+      - '7432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U saude -d saude_rotas']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: app/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://saude:saude@db:5432/saude_rotas
+      PORT: 7333
+      DATA_SOURCE: ${DATA_SOURCE:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      BRONZE_PATH: /bronze/bronze_planilha.xlsx
+    volumes:
+      # A planilha bronze não vai para a imagem: é lida de docs/ na hora do ETL.
+      - ./docs:/bronze:ro
+    ports:
+      - '7333:7333'
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

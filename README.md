@@ -11,22 +11,71 @@ Na raiz do monorepo:
 
 ```bash
 npm install
-npm run dev        # app web em http://localhost:5173  (abre direto numa perna: /#perna-coleta)
-npm test           # testes do motor do score
+docker compose up -d --build                # Postgres (localhost:7432) + API (http://localhost:7333)
+docker compose run --rm api npm run etl     # (uma vez) planilha bronze docs/bronze_planilha.xlsx → Postgres
+docker compose restart api                  # a API passa a ler o gold
+npm run dev -w app/web                      # painel em http://localhost:5173
+npm test                                    # testes do motor do score
 npm run build
 npm run typecheck
 ```
 
-O Turborepo roda cada script só no pacote que o define. `dev`, `test` e `preview` existem em `app/web`. `build` e `typecheck` também passam por `app/api`.
+Sem configurar nada, o app lê os dados fictícios de `app/web/public/data/`. Para ligar na API,
+copie `app/web/.env.example` para `app/web/.env` e preencha `VITE_API_URL=http://localhost:7333`
+(contrato em [docs/DADOS.md](docs/DADOS.md)).
 
-Sem configurar nada, o app lê os dados fictícios de `app/web/public/data/`. Para ligar numa API,
-copie `app/web/.env.example` para `app/web/.env` e preencha `VITE_API_URL` (contrato em [docs/DADOS.md](docs/DADOS.md)).
+Para desenvolver a API fora do Docker: `docker compose up -d db`, copie `app/api/.env.example` para
+`app/api/.env` e rode `npm run dev` na raiz (o Turborepo sobe web e API juntos, API na porta 7333).
+
+### API (`app/api`)
+
+Fastify + TypeScript + **PostgreSQL 17** (driver `pg`), empacotada em Docker (`app/api/Dockerfile`, `docker-compose.yml`).
+
+- Serve o contrato de `docs/DADOS.md`. Lê o **gold** gerado da planilha bronze quando `npm run etl` já rodou
+  e, se não, os JSON de `app/web/public/data`. `GET /health` diz qual fonte está ativa.
+- Guarda as ações validadas (`/acoes`) e as ocorrências confirmadas na demo.
+- Roda a IA do recorte: relato vira ficha (`POST /ocorrencias/extrair`) e ação sugerida do guia (`POST /acoes/sugerir`).
+  Usa **Claude Haiku 5.5** na extração e **Claude Sonnet 5.5** na ação. Sem `ANTHROPIC_API_KEY`, entra o modo simulado.
+- Configuração: copie `app/api/.env.example` para `app/api/.env`.
+
+| Comando | O que faz |
+|---|---|
+| `docker compose run --rm api npm run etl` | lê `docs/bronze_planilha.xlsx` e grava `bronze_*` e `gold_*` no Postgres |
+| `docker compose run --rm api npm run etl:check` | compara o gold com os JSON do front, campo a campo |
+| `docker compose run --rm api npm run eval` | mede o acerto da IA classificando os relatos reais do SAC (gabarito da bronze) |
+
+Fora do Docker, os mesmos comandos são `npm run etl -w app/api`, `npm run etl:check -w app/api` e `npm run eval -w app/api`.
+Para a IA real, exporte `ANTHROPIC_API_KEY` antes do `docker compose up` (ou ponha em `app/api/.env` fora do Docker).
+
+### Roteiro de chamadas da demo (Transferência)
+
+```bash
+# 1. relato incompleto: a IA devolve o que falta perguntar ao motorista
+curl -s -XPOST localhost:7333/ocorrencias/extrair -H 'content-type: application/json' \
+  -d '{"relato":"Tombou o caminhão, a carga de geladeiras ficou toda espalhada"}'
+
+# 2. relato completo (pode mandar imagemBase64 da foto): ficha pronta para revisar
+curl -s -XPOST localhost:7333/ocorrencias/extrair -H 'content-type: application/json' \
+  -d '{"relato":"Hoje 03:40 a carreta ABC1D23 indo pro hub de Belo Horizonte tombou na BR-381 km 512, pista molhada, sem feridos. 40 caixas de geladeira, prejuízo uns R$ 38.000"}'
+
+# 3. a pessoa confirma a ficha (campos de "ficha" da resposta anterior) e ela entra na base
+curl -s -XPOST localhost:7333/ocorrencias -H 'content-type: application/json' -d '<ficha revisada>'
+
+# 4. ação sugerida para o padrão da rota, com os números que o front calculou
+curl -s -XPOST localhost:7333/acoes/sugerir -H 'content-type: application/json' \
+  -d '{"rota_id":"T02","foco":"ocorr_100","tipo_mais_caro":"Tombamento","numeros":{"score":58,"n_tipo":3,"tipo":"Tombamento","produto":"Eletrodomésticos"}}'
+
+# 5. custo e latência de cada chamada de IA
+curl -s localhost:7333/ia/uso
+```
+
+No front, depois do `POST /ocorrencias`, invalide a query `['fontes']` para o score da rota recalcular.
 
 ## Monorepo
 
 ```
 app/web     painel React (Vite): código, dados fictícios e testes
-app/api     pacote reservado, ainda sem servidor. Com um script `dev`, `npm run dev` sobe os dois
+app/api     API Fastify: contrato, ações, IA do recorte e ETL da planilha bronze
 docs/       especificação do produto
 reference/  artifact original, só para consulta
 ```
@@ -41,6 +90,8 @@ reference/  artifact original, só para consulta
 | Cabeçalho, abas, resumo, seletor de pernas com contagiro | ✅ |
 | Por perna: filtros, 5 KPIs, lista de rotas com ação sugerida, padrões de prejuízo, ranking, premissas | ✅ (versão inicial) |
 | Aba Guia de boas práticas | ✅ |
+| API com o contrato, ações persistidas e ETL da bronze (gold idêntico aos JSON) | ✅ `app/api` |
+| IA: relato → ficha, ação sugerida do guia, registro de custo, eval com gabarito | ✅ `app/api` (falta a tela no front) |
 | Mapas (zona da cidade / região do Brasil), gráfico mês a mês, detalhe completo da rota, ações em acompanhamento + modal | ⏳ ver [docs/BACKLOG.md](docs/BACKLOG.md) |
 
 ## Documentação

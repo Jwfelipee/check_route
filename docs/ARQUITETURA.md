@@ -15,11 +15,12 @@
 | Fontes | **Inter** + **Source Serif 4** (`@fontsource-variable`) | Substitutos abertos das fontes Anthropic Sans/Serif usadas no artifact. |
 | Testes | **Vitest** | Testa o motor do score com os dados reais do protótipo. |
 
-Backend: **não é obrigatório para a demo**. O app roda só com os JSON em `app/web/public/data`.
-O pacote `app/api` já entra no workspace e nos tasks `build` e `typecheck`, mas ainda não sobe servidor
-e não tem script `dev`. Quando houver API (por exemplo FastAPI sobre o `radar.db` do projeto `hackatown`),
-basta servir os recursos descritos em [DADOS.md](DADOS.md) a partir de `app/api` e definir `VITE_API_URL`.
-As ações validadas hoje ficam no `localStorage` (um navegador); com API passam para `POST/PATCH /acoes`.
+Backend: `app/api` (**Fastify + TypeScript + PostgreSQL 17**, porta 7333, em Docker via `docker-compose.yml`). Serve os recursos de
+[DADOS.md](DADOS.md) a partir do gold gerado da planilha bronze (`npm run etl -w app/api`) ou, sem ETL,
+dos JSON de `app/web/public/data`. Com `VITE_API_URL` definido, as ações saem do `localStorage` e vão para
+`POST/PATCH /acoes` (Postgres). A API também roda a IA do recorte (Claude Haiku 5.5 na extração do relato,
+Claude Sonnet 5.5 na ação sugerida), com modo simulado quando não há `ANTHROPIC_API_KEY`.
+O app ainda roda só com os JSON, sem a API.
 
 ## Estrutura
 
@@ -51,7 +52,7 @@ app/web/                painel (Vite + React)
       painel/PernaSelector.tsx
       perna/PernaView.tsx, config.ts
       guia/Guia.tsx
-app/api/                pacote reservado (src/index.ts). Sem servidor até ganhar script `dev`
+app/api/                API Fastify: src/server.ts, store.ts (troca da base), routes/, ia/, etl/ e scripts/eval.ts
 docs/                   especificação do produto
 reference/artifact/     código original do artifact, só para consulta
 turbo.json              tasks do monorepo
