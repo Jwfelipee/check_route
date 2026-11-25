@@ -103,8 +103,22 @@ Precisa da API (`VITE_API_URL`); sem ela, a página explica como configurar.
 
 ## 7. Ações `#acoes` (`features/acoes/`)
 - **Rotas que pedem ação**: críticas e em atenção sem ação ativa, da pior para a melhor, filtro por etapa, 6 por vez.
-  Cada uma mostra a sugestão do guia (regra) com a fonte (link para a prática no guia) e os botões
-  **Validar e acompanhar**, **Sugerir com IA** (`POST /acoes/sugerir`: texto, prática, justificativa e "a IA consultou: dados da rota ·
-  ocorrências do mês · guia") e **Descartar** (grava a ação com situação Descartada).
+  Não há sugestão sem IA: cada rota recebe a ação **gerada por IA** a partir do guia de boas práticas e dos dados da rota (MCP),
+  quando o bloco aparece na tela, e ela fica guardada (a mesma rota não gasta outra chamada até os dados mudarem).
+  O bloco mostra o texto da ação, **"Baseado no guia de boas práticas"** com a prática principal e as de apoio (links para o guia,
+  com o que cada uma acrescentou), o "Por quê", "a IA consultou: resumo da rota · padrão de horário · trecho e clima ...", tempo e
+  custo (ou "reaproveitada de dd/mm hh:mm") e "Versão N".
+  Sem resposta da IA: "A IA não conseguiu sugerir uma ação agora" com o motivo e **Tentar de novo** (nunca um texto de regra).
+  Botões: **Validar e acompanhar**, **Dar detalhes** (campo "O que a IA precisa saber sobre esta rota?", até 600 caracteres: a IA
+  gera outra versão levando em conta o que a pessoa disse e mostra como mudou; telefone e nome são mascarados e instrução suspeita
+  é sinalizada) e **Descartar** (grava a ação como Descartada; a IA prepara outra sabendo do que não serviu).
 - **Em acompanhamento** e **Histórico** (concluídas, canceladas e descartadas): tabela da §3.6 com a etapa.
 - O mesmo bloco de ação aparece no detalhe da rota e na Visão geral (ação prioritária).
+
+## 8. Contatos `#contatos` (`features/contatos/`)
+- Tabela de quem pode registrar ocorrências pelo WhatsApp: nome, papel (motorista, responsável da transportadora, gestor),
+  transportadora, rotas, **telefone mascarado** e situação, com **Ativar/Desativar**.
+- **Cadastrar contato** (modal): telefone com DDD, nome, papel, transportadora e as rotas em que a pessoa responde (gestor vale para
+  todas). Número que não está na lista não registra nada, e a IA do WhatsApp só enxerga os dados das rotas da pessoa.
+- Em **Ocorrências recentes** aparece "relatado por Nome (papel · transportadora)", e o campo Responsável do "Validar e acompanhar"
+  sugere quem responde pela rota (`GET /rotas/:id/responsaveis`).

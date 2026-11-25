@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "simular": "tsx scripts/simular.ts"
+    "simular": "tsx scripts/simular.ts",
+    "escopo": "tsx scripts/escopo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",

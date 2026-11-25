@@ -129,3 +129,24 @@ export function numerosDaRota(r: SaudeRota): Record<string, number | string | nu
     produto_mais_afetado: r.produto_top,
   };
 }
+
+// ---------- contatos (quem pode registrar pelo WhatsApp) ----------
+
+export const useContatos = () => useQuery({ queryKey: ['contatos'], queryFn: iaApi.contatos, enabled: temApi });
+
+export function useCriarContato() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: iaApi.criarContato, onSuccess: () => qc.invalidateQueries({ queryKey: ['contatos'] }) });
+}
+
+export function useEditarContato() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...dados }: { id: string } & Parameters<typeof iaApi.editarContato>[1]) => iaApi.editarContato(id, dados),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contatos'] }),
+  });
+}
+
+/** Quem responde pela rota (para sugerir o responsável ao validar a ação). */
+export const useResponsaveis = (rotaId: string, ativo: boolean) =>
+  useQuery({ queryKey: ['responsaveis', rotaId], queryFn: () => iaApi.responsaveis(rotaId), enabled: ativo && temApi, staleTime: 60_000 });

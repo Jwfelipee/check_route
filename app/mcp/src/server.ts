@@ -3,12 +3,19 @@
  * Cada requisição cria um servidor só com as ferramentas do papel e com o escopo do token.
  * GET /saude responde 200 para o healthcheck.
  */
+import { existsSync } from 'node:fs';
 import { createServer, type IncomingMessage } from 'node:http';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
 import { lerToken, type Escopo } from './escopo.js';
 import { FERRAMENTAS, POR_PAPEL } from './tools.js';
+
+// .env local (fora do Docker): app/mcp/.env
+const envFile = resolve(dirname(fileURLToPath(import.meta.url)), '../.env');
+if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 const SEGREDO = process.env.MCP_ESCOPO_SECRET || 'checkroute-escopo-dev';
 const PORTA = Number(process.env.PORT || 7335);

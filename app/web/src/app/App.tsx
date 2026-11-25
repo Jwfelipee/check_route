@@ -9,12 +9,14 @@ import { Guia } from '@/features/guia/Guia';
 import { VisaoGeral } from '@/features/visao/VisaoGeral';
 import { OcorrenciasPagina } from '@/features/ocorrencias/OcorrenciasPagina';
 import { AcoesPagina } from '@/features/acoes/AcoesPagina';
+import { ContatosPagina } from '@/features/contatos/ContatosPagina';
 
 const TITULO: Record<Pagina, string> = {
   visao: 'Visão geral',
   rotas: 'Saúde das rotas',
   ocorrencias: 'Ocorrências',
   acoes: 'Ações',
+  contatos: 'Contatos',
   guia: 'Guia de boas práticas',
 };
 
@@ -67,6 +69,7 @@ export function App() {
 
           {pagina === 'ocorrencias' && <OcorrenciasPagina />}
           {pagina === 'acoes' && <AcoesPagina />}
+          {pagina === 'contatos' && <ContatosPagina />}
           {pagina === 'guia' && <Guia />}
         </main>
       </div>

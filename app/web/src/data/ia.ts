@@ -8,7 +8,7 @@ import type { Ocorrencia } from '@/lib/types';
 export const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '';
 export const temApi = Boolean(API_BASE);
 
-async function chamar<T>(metodo: 'GET' | 'POST', caminho: string, corpo?: unknown): Promise<T> {
+async function chamar<T>(metodo: 'GET' | 'POST' | 'PATCH', caminho: string, corpo?: unknown): Promise<T> {
   if (!API_BASE) throw new Error('Configure VITE_API_URL para usar esta função.');
   const r = await fetch(`${API_BASE}${caminho}`, {
     method: metodo,
@@ -19,6 +19,29 @@ async function chamar<T>(metodo: 'GET' | 'POST', caminho: string, corpo?: unknow
   if (!r.ok) throw new ErroApi((json as { erro?: string }).erro ?? `HTTP ${r.status}`, (json as { motivo?: string }).motivo);
   return json as T;
 }
+
+export type PapelContato = 'motorista' | 'transportadora' | 'gestor';
+
+export interface Contato {
+  id: string;
+  nome: string;
+  papel: PapelContato;
+  transportadora: string | null;
+  rotas: string[];
+  ativo: boolean;
+  /** Já mascarado pela API: o painel nunca recebe o número inteiro. */
+  telefone: string;
+}
+
+export interface NovoContato {
+  telefone: string;
+  nome: string;
+  papel: PapelContato;
+  transportadora?: string | null;
+  rotas: string[];
+}
+
+export type Responsavel = Omit<Contato, 'telefone'>;
 
 /** Erro da API com o motivo que ela informa (ex.: sem_chave, falha_ia, mcp_indisponivel). */
 export class ErroApi extends Error {
@@ -124,6 +147,8 @@ export interface PedidoSugestao {
   contexto?: string;
 }
 
+const chamarPatch = <T>(caminho: string, corpo: unknown) => chamar<T>('PATCH', caminho, corpo);
+
 export const iaApi = {
   extrair: (relato: string, imagem?: { base64: string; tipo: string }) =>
     chamar<RespostaExtracao>('POST', '/ocorrencias/extrair', {
@@ -133,6 +158,10 @@ export const iaApi = {
   registrar: (ficha: Record<string, unknown>) => chamar<Ocorrencia>('POST', '/ocorrencias', ficha),
   recentes: () => chamar<Ocorrencia[]>('GET', '/ocorrencias/recentes?limite=50'),
   sugerir: (corpo: PedidoSugestao) => chamar<Sugestao>('POST', '/acoes/sugerir', corpo),
+  contatos: () => chamar<Contato[]>('GET', '/contatos'),
+  criarContato: (c: NovoContato) => chamar<Contato>('POST', '/contatos', c),
+  editarContato: (id: string, c: Partial<Omit<NovoContato, 'telefone'>> & { ativo?: boolean }) => chamarPatch<Contato>(`/contatos/${id}`, c),
+  responsaveis: (rotaId: string) => chamar<Responsavel[]>('GET', `/rotas/${rotaId}/responsaveis`),
 };
 
 /** Nome legível da ferramenta que a IA chamou (para a tela). */

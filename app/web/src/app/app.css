@@ -181,3 +181,5 @@ button.cr-nav-i:hover { background: color-mix(in srgb, var(--brand-white) 8%, tr
 .cr-grafico { position: relative; min-height: 250px; }
 .cr-grafico rect[tabindex]:focus-visible { outline: none; fill: color-mix(in srgb, var(--action-focus) 8%, transparent); }
 .cr-praticas { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--fs-sm); }
+.cr-checks { display: flex; flex-direction: column; gap: var(--space-2); max-height: 220px; overflow: auto; }
+.cr-check { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); }
