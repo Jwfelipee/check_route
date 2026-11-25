@@ -2,6 +2,10 @@
  * npm run etl:check -w app/api
  * Compara o gold (gerado da planilha bronze) com os JSON que o front usa hoje,
  * campo a campo. Serve de evidência de que a transformação está correta.
+ *
+ * Se o cenário da demo foi plantado (acidentes na T02), os registros dele não existem
+ * nos JSON: ficam fora da comparação (protocolos SACDEMO… e a operação mensal da T02,
+ * cuja chegada no prazo muda com as viagens acidentadas) e são listados à parte.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -27,10 +31,20 @@ if (!(await tabelaExiste('gold_rotas'))) {
   process.exit(1);
 }
 
+const cenario = (await tabelaExiste('bronze_meta'))
+  ? (await sql<{ valor: string }>(`SELECT valor FROM bronze_meta WHERE chave = 'cenario'`))[0]
+  : undefined;
+const plantado = cenario ? (JSON.parse(cenario.valor) as { rota: string; acidentes: number; viagens_atrasadas: string[] }) : null;
+const doCenario = (tabela: string, o: Obj) =>
+  Boolean(plantado) &&
+  ((tabela === 'gold_ocorrencias' && String(o.protocolo ?? '').startsWith('SACDEMO')) ||
+    (tabela === 'gold_operacao_mes' && o.rota_id === plantado!.rota));
+
 let falhas = 0;
 for (const r of RECURSOS) {
-  const esperado = new Map(json(r.nome).map((o) => [r.chave(o), o]));
-  const obtido = new Map((await gold(r.tabela)).map((o) => [r.chave(o), o]));
+  const todos = await gold(r.tabela);
+  const esperado = new Map(json(r.nome).filter((o) => !doCenario(r.tabela, o)).map((o) => [r.chave(o), o]));
+  const obtido = new Map(todos.filter((o) => !doCenario(r.tabela, o)).map((o) => [r.chave(o), o]));
   const porCampo: Record<string, number> = {};
   const exemplos: string[] = [];
   let faltando = 0;
@@ -56,6 +70,12 @@ for (const r of RECURSOS) {
   );
   for (const ex of exemplos) console.log(`    ${ex}`);
 }
-console.log(falhas === 0 ? '\nGold idêntico aos dados do front.' : `\n${falhas} diferenças.`);
+if (plantado) {
+  console.log(
+    `\nCenário da demo fora da comparação: ${plantado.acidentes} acidentes plantados na ${plantado.rota} ` +
+      `e ${plantado.viagens_atrasadas.length} viagens com chegada atrasada (operação mensal da ${plantado.rota}).`,
+  );
+}
+console.log(falhas === 0 ? '\nGold idêntico aos dados do front (fora o cenário).' : `\n${falhas} diferenças.`);
 await pool.end();
 process.exit(falhas === 0 ? 0 : 1);
