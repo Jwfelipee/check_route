@@ -1,5 +1,5 @@
 # Postgres + API do painel.
-#   docker compose up -d --build                 # sobe banco (7432) e API (7333)
+#   docker compose up -d --build                 # sobe banco (7432), API (7333) e MCP (7335)
 #   docker compose run --rm api npm run etl      # planilha bronze (docs/) → Postgres
 #   docker compose run --rm api npm run etl:check
 services:
@@ -29,12 +29,33 @@ services:
       DATA_SOURCE: ${DATA_SOURCE:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AI_PROVIDER: ${AI_PROVIDER:-}
+      MCP_URL: http://mcp:7335/mcp
+      MCP_ESCOPO_SECRET: ${MCP_ESCOPO_SECRET:-checkroute-escopo-dev}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-checkroute-interno-dev}
       BRONZE_PATH: /bronze/bronze_planilha.xlsx
     volumes:
       # A planilha bronze não vai para a imagem: é lida de docs/ na hora do ETL.
       - ./docs:/bronze:ro
     ports:
       - '7333:7333'
+    depends_on:
+      db:
+        condition: service_healthy
+      mcp:
+        condition: service_started
+    restart: unless-stopped
+
+  # Servidor MCP: dados específicos da rota para a IA, só leitura (papel checkroute_leitura) e com escopo assinado.
+  mcp:
+    build:
+      context: .
+      dockerfile: app/mcp/Dockerfile
+    environment:
+      PORT: 7335
+      DATABASE_URL_LEITURA: postgres://checkroute_leitura:${LEITURA_PASSWORD:-leitura}@db:5432/saude_rotas
+      MCP_ESCOPO_SECRET: ${MCP_ESCOPO_SECRET:-checkroute-escopo-dev}
+    ports:
+      - '7335:7335'
     depends_on:
       db:
         condition: service_healthy

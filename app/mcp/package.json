@@ -1,0 +1,25 @@
+{
+  "name": "@dashboard-hackatown/mcp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Servidor MCP (só leitura) com os dados específicos de cada rota para a IA justificar a ação sugerida. Cada conexão tem um escopo assinado: só enxerga as rotas do remetente.",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "mcp:smoke": "tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "pg": "^8.23.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.6.3"
+  }
+}

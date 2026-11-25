@@ -18,6 +18,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",
     "@fastify/cors": "^11.1.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "exceljs": "^4.4.0",
     "fastify": "^5.6.1",
     "pg": "^8.23.1",

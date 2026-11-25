@@ -1,11 +1,16 @@
 /**
  * Porta de entrada da IA: escolhe Claude ou simulado, mede tempo e custo
  * e grava cada chamada em ia_uso (critério "custo e latência" / observabilidade).
- * Se o Claude falhar (rede, chave), cai no simulado e avisa na resposta.
+ * Extração e classificação: se o Claude falhar (rede, chave), cai no simulado e avisa na resposta.
+ * Ação sugerida: NÃO existe sugestão sem IA. Sem chave, sem MCP ou com falha do modelo a API
+ * devolve erro com motivo (a tela mostra "Tentar de novo"); o simulado só roda com AI_PROVIDER=fake.
  */
 import { sql } from '../db.js';
 import * as claude from './claude.js';
 import * as fake from './fake.js';
+import { abrirMcp, ErroIa } from './mcp.js';
+import type { ContextoSugestao } from './ferramentas.js';
+import type { OpcoesSugestao, ResultadoSugestao } from './claude.js';
 
 export type ModoIa = 'claude' | 'simulado';
 
@@ -69,11 +74,39 @@ async function executar<T>(
   return { dados, meta };
 }
 
+/** Ação sugerida: Claude com as ferramentas do MCP; simulado só por AI_PROVIDER=fake explícito. */
+async function sugerirAcao(ctx: ContextoSugestao, opcoes: OpcoesSugestao = {}): Promise<{ dados: ResultadoSugestao['dados']; consultas: ResultadoSugestao['consultas']; meta: Meta }> {
+  const t0 = performance.now();
+  const simulado = process.env.AI_PROVIDER === 'fake';
+  if (!simulado && modoIa() !== 'claude') {
+    throw new ErroIa('sem_chave', 'A chave da IA (ANTHROPIC_API_KEY) não está configurada.');
+  }
+  try {
+    let r: ResultadoSugestao;
+    if (simulado) {
+      const conexao = await abrirMcp();
+      try {
+        const dados = await fake.sugerirAcaoFake(ctx, { contexto: opcoes.contexto }, conexao);
+        r = { dados, consultas: conexao.chamadas, uso: { modelo: 'regras-simuladas', input_tokens: 0, output_tokens: 0 } };
+      } finally {
+        await conexao.fechar();
+      }
+    } else {
+      r = await claude.sugerirAcao(ctx, opcoes);
+    }
+    const meta: Meta = { modo: simulado ? 'simulado' : 'claude', ms: Math.round(performance.now() - t0), ...r.uso, custo_usd: simulado ? 0 : custo(r.uso) };
+    await registrar('sugerir_acao', meta);
+    return { dados: r.dados, consultas: r.consultas, meta };
+  } catch (e) {
+    if (e instanceof ErroIa) throw e;
+    throw new ErroIa('falha_ia', `A IA não conseguiu sugerir a ação (${(e as Error).message}).`);
+  }
+}
+
 export const ia = {
   extrairFicha: (a: Parameters<typeof claude.extrairFicha>[0]) =>
     executar('extrair_ficha', () => claude.extrairFicha(a), () => fake.extrairFichaFake(a)),
-  sugerirAcao: (a: Parameters<typeof claude.sugerirAcao>[0]) =>
-    executar('sugerir_acao', () => claude.sugerirAcao(a), () => fake.sugerirAcaoFake(a)),
+  sugerirAcao,
   classificarRelato: (a: Parameters<typeof claude.classificarRelato>[0]) =>
     executar('classificar_relato', () => claude.classificarRelato(a), () => fake.classificarRelatoFake(a)),
 };

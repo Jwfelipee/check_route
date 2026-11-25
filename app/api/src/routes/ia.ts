@@ -9,7 +9,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod/v4';
 import { sql } from '../db.js';
 import { ia } from '../ia/index.js';
-import { ocorrenciasDaRota } from '../ia/ferramentas.js';
+import { assinaturaDaRota, conferirProposta } from '../ia/ferramentas.js';
+import { ErroIa } from '../ia/mcp.js';
 import {
   CAMPOS_OBRIGATORIOS,
   FichaConfirmada,
@@ -132,31 +133,83 @@ export async function rotasIa(app: FastifyInstance) {
     return store.ocorrenciasRecentes(limite);
   });
 
+  /**
+   * Ação sugerida por IA (não existe sugestão sem IA). A sugestão fica guardada por rota e versão:
+   *  - sem `contexto`: devolve a última versão se os dados da rota não mudaram (assinatura igual); senão gera outra;
+   *  - com `contexto` ("Dar detalhes"): sempre gera outra versão, levando em conta o que a pessoa disse.
+   * Falha da IA, falta de chave ou MCP fora do ar: 503 com `motivo`.
+   */
+  const gerando = new Map<string, Promise<Record<string, unknown>>>();
+
   app.post('/acoes/sugerir', async (req, reply) => {
     const p = PedidoSugestao.safeParse(req.body);
     if (!p.success) return reply.code(400).send({ erro: 'Pedido inválido', detalhes: z.flattenError(p.error) });
-    const rota = (await store.rotas()).find((r) => r.rota_id === p.data.rota_id);
+    const pedido = p.data;
+    const rota = (await store.rotas()).find((r) => r.rota_id === pedido.rota_id);
     if (!rota) return reply.code(404).send({ erro: 'Rota não encontrada' });
-    const praticas = (await store.praticas()).filter((x) => x.perna === rota.perna);
 
-    const { dados, meta } = await ia.sugerirAcao({
-      rota,
-      numeros: p.data.numeros,
-      foco: p.data.foco,
-      tipoMaisCaro: p.data.tipo_mais_caro,
-    });
+    // O que a pessoa escreve é dado: sem dado pessoal, sem delimitadores e com instrução suspeita marcada.
+    const bruto = p.data.contexto?.trim() || undefined;
+    const privado = bruto ? mascarar(bruto) : null;
+    const contexto = privado ? neutralizarDelimitadores(privado.texto) : undefined;
+    const guardas = bruto ? detectarInstrucao(bruto) : { instrucao_suspeita: false, motivos: [] };
+    const privacidade = { mascarados: privado?.mascarados ?? [] };
 
-    const pratica = praticas.find((x) => x.id === dados.pratica_id);
-    if (!pratica) {
-      return reply.code(502).send({ erro: `A IA escolheu uma prática fora do guia (${dados.pratica_id}). Tente de novo.`, meta });
+    const assinatura = await assinaturaDaRota(rota.rota_id, p.data.numeros);
+    const [ultima] = await sql<LinhaSugestao>('SELECT * FROM sugestoes_acao WHERE rota_id = $1 ORDER BY versao DESC LIMIT 1', [rota.rota_id]);
+    if (!contexto && ultima && ultima.assinatura === assinatura) return doBanco(ultima, true);
+
+    const chave = `${rota.rota_id}|${assinatura}|${contexto ?? ''}`;
+    let promessa = gerando.get(chave);
+    if (!promessa) {
+      promessa = gerar().finally(() => gerando.delete(chave));
+      gerando.set(chave, promessa);
     }
-    return {
-      ...dados,
-      pratica: { id: pratica.id, titulo: pratica.titulo, prazo_dias: pratica.prazo_dias, esforco: pratica.esforco },
-      // Números que vieram do código: os do front e os que as ferramentas devolveram à IA.
-      numeros_fora: numerosFora(dados.acao, [p.data.numeros, await ocorrenciasDaRota(rota.rota_id), { km: rota.km }]),
-      meta,
-    };
+    try {
+      return await promessa;
+    } catch (e) {
+      if (e instanceof ErroIa) return reply.code(503).send({ erro: e.message, motivo: e.motivo });
+      app.log.error(e);
+      return reply.code(502).send({ erro: (e as Error).message, motivo: 'falha_ia' });
+    }
+
+    async function gerar(): Promise<Record<string, unknown>> {
+      const ctx = { rota: rota!, numeros: pedido.numeros, foco: pedido.foco, tipoMaisCaro: pedido.tipo_mais_caro };
+      const anterior = ultima ? { acao: ultima.sugestao.acao as string, praticas: (ultima.sugestao.praticas as { id: string }[]).map((x) => ({ id: x.id })) } : undefined;
+      const { dados, consultas, meta } = await ia.sugerirAcao(ctx, { contexto, anterior: contexto ? anterior : undefined });
+      const erro = await conferirProposta(ctx, dados);
+      if (erro) throw new ErroIa('falha_ia', `A IA propôs algo fora do guia. ${erro}`);
+
+      const guia = await store.praticas();
+      const sugestao = {
+        acao: dados.acao,
+        justificativa: dados.justificativa,
+        numeros_usados: dados.numeros_usados,
+        considerou_contexto: dados.considerou_contexto,
+        praticas: dados.praticas.map((u) => {
+          const g = guia.find((x) => x.id === u.id)!;
+          return { ...u, titulo: g.titulo, prazo_dias: g.prazo_dias, esforco: g.esforco };
+        }),
+        // Números que vieram do código: os do front e os que as ferramentas devolveram à IA.
+        numeros_fora: numerosFora(dados.acao, [pedido.numeros, consultas.map((c) => c.resultado), { km: rota!.km }]),
+        ferramentas_chamadas: dados.ferramentas_chamadas,
+        privacidade,
+        guardas,
+      };
+      const [nova] = await sql<LinhaSugestao>(
+        `INSERT INTO sugestoes_acao (rota_id, versao, assinatura, contexto, sugestao, ferramentas, modelo, uso, simulado)
+         VALUES ($1, COALESCE((SELECT max(versao) FROM sugestoes_acao WHERE rota_id = $1), 0) + 1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [rota!.rota_id, assinatura, contexto ?? null, sugestao, JSON.stringify(dados.ferramentas_chamadas), meta.modelo, meta, meta.modo === 'simulado'],
+      );
+      return doBanco(nova, false);
+    }
+  });
+
+  /** Histórico de versões da sugestão de uma rota (a mais nova primeiro). */
+  app.get<{ Params: { rota_id: string } }>('/acoes/sugestoes/:rota_id', async (req) => {
+    const linhas = await sql<LinhaSugestao>('SELECT * FROM sugestoes_acao WHERE rota_id = $1 ORDER BY versao DESC LIMIT 20', [req.params.rota_id]);
+    return linhas.map((l) => doBanco(l, false));
   });
 
   app.get('/ia/uso', async () => {
@@ -199,3 +252,21 @@ function numerosFora(texto: string, fontes: unknown[]): string[] {
 }
 
 const unir = (...listas: TipoDado[][]) => [...new Set(listas.flat())];
+
+interface LinhaSugestao {
+  rota_id: string; versao: number; assinatura: string; contexto: string | null;
+  sugestao: Record<string, unknown>; modelo: string; uso: Record<string, unknown> | null; simulado: boolean; criada_em: Date;
+}
+
+function doBanco(l: LinhaSugestao, cache: boolean): Record<string, unknown> {
+  return {
+    ...l.sugestao,
+    rota_id: l.rota_id,
+    versao: l.versao,
+    contexto: l.contexto,
+    simulado: l.simulado,
+    cache,
+    criada_em: l.criada_em.toISOString(),
+    meta: l.uso,
+  };
+}
