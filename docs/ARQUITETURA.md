@@ -4,7 +4,7 @@
 
 | Camada | Escolha | Por quê |
 |---|---|---|
-| Monorepo | **npm workspaces + Turborepo** | `app/web` e `app/api` no mesmo repositório; `turbo` roda dev, build, teste e typecheck. |
+| Monorepo | **npm workspaces + Turborepo** | `app/web`, `app/api` e `app/whatsapp` no mesmo repositório; `turbo` roda dev, build, teste e typecheck. |
 | Build / dev server | **Vite 5** | Sobe em segundos, HMR, zero config. |
 | UI | **React 18 + TypeScript** (strict) | Time conhece; tipos pegam erro de campo nos cálculos. |
 | Gráficos e mapas | **D3 v7** | O artifact já desenha tudo em D3 (contagiro, barras + linha, mapas por path SVG). Portar é direto; libs prontas (Recharts etc.) não fazem o mapa por zona nem o contagiro. |
@@ -21,6 +21,14 @@ dos JSON de `app/web/public/data`. Com `VITE_API_URL` definido, as ações saem 
 `POST/PATCH /acoes` (Postgres). A API também roda a IA do recorte (Claude Haiku 5.5 na extração do relato,
 Claude Sonnet 5.5 na ação sugerida), com modo simulado quando não há `ANTHROPIC_API_KEY`.
 O app ainda roda só com os JSON, sem a API.
+
+## Agente de WhatsApp
+
+`app/whatsapp` recebe o webhook da WhatsApp Cloud API (assinatura HMAC conferida), conversa com o motorista
+por um agente Claude (`claude-opus-5-5`, esforço baixo, fallback de servidor ligado) e fala com a API só pelos
+endpoints públicos: `POST /ocorrencias/extrair` para montar a ficha e `POST /ocorrencias` para gravar.
+A gravação nunca é ferramenta do modelo: acontece no código quando o motorista aperta Confirmar.
+Sem chave da Anthropic roda em modo simulado; sem token da Meta roda em dry-run. Ver `app/whatsapp/README.md`.
 
 ## Estrutura
 
@@ -53,6 +61,7 @@ app/web/                painel (Vite + React)
       perna/PernaView.tsx, config.ts
       guia/Guia.tsx
 app/api/                API Fastify: src/server.ts, store.ts (troca da base), routes/, ia/, etl/ e scripts/eval.ts
+app/whatsapp/           agente de WhatsApp: webhook da Meta (7334), agente Claude com ferramentas, estado em wa_* no Postgres
 docs/                   especificação do produto
 reference/artifact/     código original do artifact, só para consulta
 turbo.json              tasks do monorepo

@@ -40,5 +40,34 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Agente de WhatsApp (Meta Cloud API + Claude). Webhook em http://localhost:7334/webhook
+  # (exponha com um túnel HTTPS, ex.: ngrok, e cadastre a URL no app da Meta). Ver app/whatsapp/README.md.
+  whatsapp:
+    build:
+      context: .
+      dockerfile: app/whatsapp/Dockerfile
+    environment:
+      PORT: 7334
+      API_URL: http://api:7333
+      DATABASE_URL: postgres://saude:saude@db:5432/saude_rotas
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+      META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_VERIFY_TOKEN: ${META_VERIFY_TOKEN:-}
+      META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v23.0}
+      META_DRY_RUN: ${META_DRY_RUN:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      WA_MODELO: ${WA_MODELO:-claude-opus-5-5}
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      WA_NUMEROS_PERMITIDOS: ${WA_NUMEROS_PERMITIDOS:-}
+    ports:
+      - '7334:7334'
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   pgdata:

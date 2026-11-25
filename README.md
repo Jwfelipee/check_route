@@ -71,13 +71,21 @@ curl -s localhost:7333/ia/uso
 
 No front, depois do `POST /ocorrencias`, invalide a query `['fontes']` para o score da rota recalcular.
 
+### Agente de WhatsApp (`app/whatsapp`)
+
+O motorista manda texto e foto pelo WhatsApp; o agente (Claude com ferramentas) usa `POST /ocorrencias/extrair`,
+pergunta o que falta e mostra o resumo com os botões Confirmar e Corrigir. Só o botão Confirmar grava
+(`POST /ocorrencias`). Webhook na porta 7334: `docker compose up -d --build whatsapp`.
+Configuração da Meta, teste sem a Meta (`npm run simular -w app/whatsapp`) e detalhes em [app/whatsapp/README.md](app/whatsapp/README.md).
+
 ## Monorepo
 
 ```
-app/web     painel React (Vite): código, dados fictícios e testes
-app/api     API Fastify: contrato, ações, IA do recorte e ETL da planilha bronze
-docs/       especificação do produto
-reference/  artifact original, só para consulta
+app/web       painel React (Vite): código, dados fictícios e testes
+app/api       API Fastify: contrato, ações, IA do recorte e ETL da planilha bronze
+app/whatsapp  agente de WhatsApp (Meta Cloud API + Claude): motorista relata a ocorrência e ela entra na API
+docs/         especificação do produto
+reference/    artifact original, só para consulta
 ```
 
 ## O que já está pronto e o que falta
