@@ -7,6 +7,7 @@ const ITENS: { pagina?: Pagina; label: string; icon: IconName; emBreve?: boolean
   // Ainda sem tela no front (BACKLOG 10 e 11): aparecem, mas não são anunciados como prontos.
   { label: 'Ocorrências', icon: 'ocorrencias', emBreve: true },
   { label: 'Ações', icon: 'acoes', emBreve: true },
+  { pagina: 'atendimentos', label: 'Atendimentos', icon: 'conversas' },
   { pagina: 'guia', label: 'Guia de boas práticas', icon: 'guia' },
 ];
 

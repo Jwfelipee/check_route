@@ -35,6 +35,24 @@ Detalhes:
 - Hoje a API só aceita ocorrências da **transferência** (`POST /ocorrencias`). Para coleta e entrega,
   a API precisa ganhar o mesmo endpoint para essas pernas.
 
+## Reiniciar e atender pelo painel
+
+- **O motorista** pode mandar `reiniciar` (ou `recomeçar`, `novo atendimento`, `#novo`, `cancelar`) a qualquer
+  momento: a ficha em andamento é descartada e o agente começa de novo.
+- A conversa também recomeça sozinha depois de registrar a ocorrência e depois de 6 h parada (só com o bot;
+  conversa com atendente não expira).
+- **A aba Atendimentos do painel** (`app/web`) mostra as conversas dos últimos 7 dias, atualizando sozinha, com
+  a transcrição, a ficha em andamento e o que falta. Nela dá para:
+  - **Assumir conversa**: o agente para de responder e o atendente escreve pelo painel (opcional: avisar o motorista);
+  - **Devolver ao bot**: o agente volta, e o que foi conversado com o atendente entra como nota no histórico dele;
+  - **Reiniciar conversa**: descarta a ficha e volta para o bot.
+- Os endpoints ficam em `/atendimento/*` e exigem `Authorization: Bearer <WA_ADMIN_TOKEN>`.
+  Sem `WA_ADMIN_TOKEN`, respondem 503. O painel pede o token na tela e guarda só no navegador.
+  No build do painel, `VITE_WA_URL` aponta para este app (ex.: `https://checkroute-whatsapp.wfelipe.com.br`).
+- A transcrição fica na tabela `wa_evento` (motorista, bot, atendente e eventos do sistema).
+- Atenção à janela de 24 h da Meta: o atendente só consegue mandar texto livre se o motorista escreveu nas últimas 24 h
+  (o painel avisa).
+
 ## Configurar a Meta (uma vez)
 
 No [developers.facebook.com](https://developers.facebook.com), no seu app com o produto **WhatsApp**:
@@ -93,6 +111,7 @@ npm test -w app/whatsapp
 | `src/agente/ferramentas.ts` | ferramentas e o que cada uma pode fazer |
 | `src/agente/ficha.ts` | obrigatórios e resumo para o motorista conferir |
 | `src/agente/simulado.ts` | agente sem IA |
-| `src/estado.ts` | conversas, deduplicação e trilha no Postgres |
+| `src/estado.ts` | conversas, transcrição, deduplicação e trilha no Postgres |
+| `src/atendimento.ts` | endpoints do painel de atendimentos (token) |
 | `src/api.ts` | cliente da `app/api` |
 | `scripts/simular.ts` | motorista de mentira para teste local |

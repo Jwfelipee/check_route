@@ -5,9 +5,11 @@
  *   GET  /health
  */
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import { config } from './config.js';
 import { iniciarEstado, primeiraVez } from './estado.js';
 import { processar } from './agente/index.js';
+import { rotasAtendimento } from './atendimento.js';
 import { assinaturaValida, lerMensagens } from './meta/webhook.js';
 
 export async function criarServidor() {
@@ -19,7 +21,15 @@ export async function criarServidor() {
     try { feito(null, JSON.parse((corpo as Buffer).toString('utf8') || '{}')); } catch (e) { feito(e as Error, undefined); }
   });
 
-  app.get('/health', async () => ({ ok: true, meta: config.meta.dryRun ? 'dry-run' : 'cloud-api', ia: config.iaReal ? config.modelo : 'simulado', api: config.apiUrl }));
+  // CORS só interessa ao painel (/atendimento); a Meta chama o webhook de servidor para servidor.
+  await app.register(cors, {
+    origin: config.corsOrigens.length ? config.corsOrigens : true,
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['authorization', 'content-type'],
+  });
+  await app.register(rotasAtendimento);
+
+  app.get('/health', async () => ({ ok: true, meta: config.meta.dryRun ? 'dry-run' : 'cloud-api', ia: config.iaReal ? config.modelo : 'simulado', api: config.apiUrl, painel: !!config.adminToken }));
 
   app.get<{ Querystring: Record<string, string> }>('/webhook', async (req, reply) => {
     const q = req.query;

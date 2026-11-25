@@ -76,6 +76,8 @@ No front, depois do `POST /ocorrencias`, invalide a query `['fontes']` para o sc
 O motorista manda texto e foto pelo WhatsApp; o agente (Claude com ferramentas) usa `POST /ocorrencias/extrair`,
 pergunta o que falta e mostra o resumo com os botões Confirmar e Corrigir. Só o botão Confirmar grava
 (`POST /ocorrencias`). Webhook na porta 7334: `docker compose up -d --build whatsapp`.
+A aba **Atendimentos** do painel mostra as conversas e deixa assumir, devolver ao bot e reiniciar (precisa de `WA_ADMIN_TOKEN`
+no app de WhatsApp e `VITE_WA_URL` no build do painel). O motorista pode mandar `reiniciar` para começar de novo.
 Configuração da Meta, teste sem a Meta (`npm run simular -w app/whatsapp`) e detalhes em [app/whatsapp/README.md](app/whatsapp/README.md).
 
 ## Monorepo
