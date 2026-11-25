@@ -1,6 +1,6 @@
 # Dados
 
-## Fontes (`public/data/`)
+## Fontes (`app/web/public/data/`)
 
 | Arquivo | Linhas | Grão | Campos principais |
 |---|---|---|---|
@@ -25,7 +25,7 @@ Tudo fictício (gerado no artifact). Mapa: regiões simplificadas do Datamaps (M
 | Frete/orçado · 20% · 125% → 100% | Frete/orçado · 20% · 125% → 100% | Frete/orçado · 20% · 125% → 100% |
 | Horas até o CD · 15% · 24 → 6 | Horas no cross-docking · 15% · 16 → 4 | Dias p/ resolver · 15% · 15 → 3 |
 
-## Regras (implementadas em `src/lib/score.ts`)
+## Regras (implementadas em `app/web/src/lib/score.ts`)
 
 - **Nota** da premissa = `clamp((valor − nota_zero) / (nota_cem − nota_zero), 0, 1) × 100`.
 - **Score** da rota = média das notas ponderada pelos pesos (ignora nota nula).
@@ -52,7 +52,7 @@ Com `VITE_API_URL=https://api.exemplo`, o app faz:
 | POST | `/acoes` | cria; corpo `Acao` sem `id`; devolve com `id` |
 | PATCH | `/acoes/:id` | `{status: 'Concluída' | 'Cancelada'}` |
 
-Formatos exatos: schemas zod em `src/lib/types.ts`. O cálculo fica no front (igual ao artifact);
+Formatos exatos: schemas zod em `app/web/src/lib/types.ts`. O cálculo fica no front (igual ao artifact);
 se o volume crescer, mover `calcRotaMes` para o backend/SQL e expor `/rota_mes` pronto.
 
 ### Ligação com o projeto `hackatown` (Radar de Ocorrências)

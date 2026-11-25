@@ -7,23 +7,37 @@ a ação sugerida a partir de um guia de boas práticas e o acompanhamento dessa
 
 ## Rodar
 
+Na raiz do monorepo:
+
 ```bash
 npm install
-npm run dev        # http://localhost:5173  (abre direto numa perna: /#perna-coleta)
+npm run dev        # app web em http://localhost:5173  (abre direto numa perna: /#perna-coleta)
 npm test           # testes do motor do score
 npm run build
+npm run typecheck
 ```
 
-Sem configurar nada, o app lê os dados fictícios de `public/data/`. Para ligar numa API,
-copie `.env.example` para `.env` e preencha `VITE_API_URL` (contrato em [docs/DADOS.md](docs/DADOS.md)).
+O Turborepo roda cada script só no pacote que o define. `dev`, `test` e `preview` existem em `app/web`. `build` e `typecheck` também passam por `app/api`.
+
+Sem configurar nada, o app lê os dados fictícios de `app/web/public/data/`. Para ligar numa API,
+copie `app/web/.env.example` para `app/web/.env` e preencha `VITE_API_URL` (contrato em [docs/DADOS.md](docs/DADOS.md)).
+
+## Monorepo
+
+```
+app/web     painel React (Vite): código, dados fictícios e testes
+app/api     pacote reservado, ainda sem servidor. Com um script `dev`, `npm run dev` sobe os dois
+docs/       especificação do produto
+reference/  artifact original, só para consulta
+```
 
 ## O que já está pronto e o que falta
 
 | Bloco | Situação |
 |---|---|
-| Motor do score (8 cálculos portados do artifact) + testes | ✅ `src/lib/score.ts` |
-| Camada de dados (JSON local ou API, validação zod) | ✅ `src/data/` |
-| Design system: tokens, base, componentes | ✅ `src/design-system/` |
+| Motor do score (8 cálculos portados do artifact) + testes | ✅ `app/web/src/lib/score.ts` |
+| Camada de dados (JSON local ou API, validação zod) | ✅ `app/web/src/data/` |
+| Design system: tokens, base, componentes | ✅ `app/web/src/design-system/` |
 | Cabeçalho, abas, resumo, seletor de pernas com contagiro | ✅ |
 | Por perna: filtros, 5 KPIs, lista de rotas com ação sugerida, padrões de prejuízo, ranking, premissas | ✅ (versão inicial) |
 | Aba Guia de boas práticas | ✅ |

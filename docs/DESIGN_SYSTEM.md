@@ -1,6 +1,6 @@
 # Design system · Saúde das rotas
 
-Extraído do artifact original (tema "Fundo branco"). Fonte da verdade: `src/design-system/tokens.css`.
+Extraído do artifact original (tema "Fundo branco"). Fonte da verdade: `app/web/src/design-system/tokens.css`.
 
 ## Princípios
 

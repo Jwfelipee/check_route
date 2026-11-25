@@ -12,7 +12,7 @@ código de referência em `reference/artifact/sr_view.js` (nome do `dash.draw` e
 | 5 | Detalhe da rota: hero (gauge + barras das premissas + células), `MiniLine` 6 meses, ocorrências por tipo | `features/perna/RotaCard.tsx` | `rotas`, `cartao`, `miniScore` | G |
 | 6 | Ações: tabela, modal de validação, concluir/cancelar (usar `acoesRepo` + `useAcoes`, invalidar a query ao salvar) | `features/acoes/` | `acoes`, `blocoAcao` | M |
 | 7 | Link "ver no guia" que abre a aba e destaca a prática | `Guia.tsx`, `store.ts` | `guia` | P |
-| 8 | Backend opcional (FastAPI) servindo os recursos de [DADOS.md](DADOS.md) a partir do `radar.db` | repositório `hackatown` | — | M |
+| 8 | Backend opcional servindo os recursos de [DADOS.md](DADOS.md). O `radar.db` do projeto `hackatown` pode alimentar `/ocorrencias` | `app/api` (já no workspace; ainda sem servidor nem script `dev`) | — | M |
 | 9 | Teste visual rápido em 400 px de largura e revisão de acessibilidade (foco, aria) | todo o app | — | P |
 
 P = até 1 h · M = 1–3 h · G = meio dia.

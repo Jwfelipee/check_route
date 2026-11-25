@@ -21,7 +21,7 @@ Abaixo, a dica: "Clique em uma perna para ver as rotas, o prejuízo e as premiss
 
 ## Seções de cada perna (`#perna-coleta` como exemplo)
 
-As três pernas têm a mesma estrutura; o que muda está em `src/features/perna/config.ts`.
+As três pernas têm a mesma estrutura; o que muda está em `app/web/src/features/perna/config.ts`.
 
 ### 3.1 Cabeçalho da perna
 "Coleta · first mile" (serif 22 px) e descrição do que mais pesa na perna.
