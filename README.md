@@ -6,7 +6,7 @@ Projeto para construir, como app próprio, o dashboard que nasceu como artifact 
 a ação sugerida a partir de um guia de boas práticas e o acompanhamento dessas ações.
 
 ## Rodar
-
+<!-- . -->
 Na raiz do monorepo:
 
 ```bash
