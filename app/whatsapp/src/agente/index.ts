@@ -115,7 +115,13 @@ async function tratar(m: MensagemRecebida) {
 async function confirmar(c: Conversa): Promise<{ ok: boolean; texto: string }> {
   if (!c.aguardando_confirmacao || !c.ficha_pendente) return { ok: false, texto: 'Não tenho nenhuma ocorrência esperando confirmação. Me conte o que aconteceu.' };
   if (faltandoNaFicha(c.ficha_pendente).length) return { ok: false, texto: 'A ficha ainda está incompleta. Me diga o que falta e eu mando o resumo de novo.' };
-  const ficha = { ...c.ficha_pendente, relato: `${c.ficha_pendente.relato ?? c.relato}\n[via WhatsApp ${c.telefone}${c.nome ? `, ${c.nome}` : ''}]` };
+  // canal/com_foto: a API marca a origem (padrão "formulario") e só guarda que havia foto, não a imagem.
+  const ficha = {
+    ...c.ficha_pendente,
+    relato: `${c.ficha_pendente.relato ?? c.relato}\n[via WhatsApp ${c.telefone}${c.nome ? `, ${c.nome}` : ''}]`,
+    canal: 'whatsapp',
+    com_foto: !!c.foto_media_id,
+  };
   try {
     const oc = await api.registrar(ficha);
     await registrarTrilha(c.telefone, oc.id, ficha);
