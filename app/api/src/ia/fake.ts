@@ -41,8 +41,10 @@ export function extrairFichaFake(args: { rotas: Rota[]; relato: string; dataRefe
   }
 
   const trecho = args.relato.match(/\b(?:BR|SP|RJ|MG|PR|SC|RS|GO|BA|PE)[- ]?\d{2,3}(?:[^.;,\n]*?km\s?\d+)?/i)?.[0] ?? null;
-  const placa = args.relato.toUpperCase().match(/\b[A-Z]{3}-?\d[A-Z0-9]\d{2}\b/)?.[0] ?? null;
-  const custo = args.relato.match(/R\$\s?([\d.]+(?:,\d{2})?)/);
+  // O relato chega mascarado: a placa vem como pseudônimo VEIC-xxxx.
+  const placa = args.relato.match(/\bVEIC-[0-9a-f]{4}\b/)?.[0] ?? args.relato.toUpperCase().match(/\b[A-Z]{3}-?\d[A-Z0-9]\d{2}\b/)?.[0] ?? null;
+  // "R$ 38.000", "R$ 12 mil", "R$ 1,5 mil"
+  const custo = args.relato.match(/R\$\s?([\d.]+(?:,\d{1,2})?)(\s?mil\b)?/i);
   const volumes = t.match(/(\d+)\s*(?:volumes|caixas|unidades)/);
   const vitima = /sem ferid|ninguem se feriu|sem vitima/.test(t) ? false : /vitima|ferid/.test(t) ? true : null;
 
@@ -58,7 +60,7 @@ export function extrairFichaFake(args: { rotas: Rota[]; relato: string; dataRefe
     condicao_via_clima: /chuv|neblina|pista molhada|buraco/.test(t) ? 'via molhada ou ruim' : null,
     gravidade: /tomb|vitima|ferid|perda total/.test(t) ? 'grave' : tipo ? 'moderada' : null,
     volumes_afetados: volumes ? Number(volumes[1]) : null,
-    custo_estimado: custo ? Number(custo[1].replace(/\./g, '').replace(',', '.')) : null,
+    custo_estimado: custo ? Number(custo[1].replace(/\./g, '').replace(',', '.')) * (custo[2] ? 1000 : 1) : null,
     houve_vitima: vitima,
     resumo: args.relato.slice(0, 160),
     pergunta_ao_motorista: null,
