@@ -140,7 +140,6 @@ export async function rotasIa(app: FastifyInstance) {
 
     const { dados, meta } = await ia.sugerirAcao({
       rota,
-      praticas,
       numeros: p.data.numeros,
       foco: p.data.foco,
       tipoMaisCaro: p.data.tipo_mais_caro,

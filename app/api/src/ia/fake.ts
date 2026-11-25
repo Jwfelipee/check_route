@@ -4,6 +4,8 @@
  */
 import type { Pratica, Rota } from '../types.js';
 import type { ClassificacaoIa, FichaIa, SugestaoIa } from './schemas.js';
+import { TIPOS_ACIDENTE } from './schemas.js';
+import { consultarRota, listarPraticas, ocorrenciasDaRota, type ChamadaFerramenta, type ContextoSugestao } from './ferramentas.js';
 
 const sem = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -68,30 +70,48 @@ export function extrairFichaFake(args: { rotas: Rota[]; relato: string; dataRefe
   return ficha;
 }
 
-export function sugerirAcaoFake(args: {
-  rota: Rota;
-  praticas: Pratica[];
-  numeros: Record<string, unknown>;
-  foco?: string | null;
-  tipoMaisCaro?: string | null;
-}): SugestaoIa {
+/**
+ * Modo simulado da ação sugerida: percorre as MESMAS ferramentas que o Claude usa
+ * (consultar_rota → ocorrencias_da_rota → listar_praticas → propor_acao), mas a escolha
+ * é por regra. Assim a tela mostra o mesmo rastro de consultas com ou sem chave.
+ */
+export async function sugerirAcaoFake(ctx: ContextoSugestao): Promise<SugestaoIa & { ferramentas_chamadas: ChamadaFerramenta[] }> {
+  const chamadas: ChamadaFerramenta[] = [];
+  chamadas.push({ nome: 'consultar_rota', entrada: { rota_id: ctx.rota.rota_id } });
+  const rota = consultarRota(ctx);
+  chamadas.push({ nome: 'ocorrencias_da_rota', entrada: { rota_id: ctx.rota.rota_id } });
+  const ocorr = await ocorrenciasDaRota(ctx.rota.rota_id);
+  chamadas.push({ nome: 'listar_praticas', entrada: { perna: ctx.rota.perna } });
+  const praticas = await listarPraticas(ctx.rota.perna);
+
+  const tipoTop = ocorr.por_tipo[0]?.tipo ?? rota.tipo_mais_caro;
   const casa = (p: Pratica, chave?: string | null) => Boolean(chave && p.gatilho.split('|').includes(chave));
   const pratica =
-    args.praticas.find((p) => casa(p, args.tipoMaisCaro)) ??
-    args.praticas.find((p) => casa(p, args.foco)) ??
-    args.praticas[0];
+    praticas.find((p) => casa(p, tipoTop)) ?? praticas.find((p) => casa(p, ctx.foco)) ?? praticas[0];
+
+  const topo = ocorr.por_tipo.find((t) => t.tipo === tipoTop);
   const usados: string[] = [];
-  const valores: Record<string, unknown> = { transportadora: args.rota.transportadora, ...args.numeros };
+  const valores: Record<string, unknown> = {
+    transportadora: ctx.rota.transportadora,
+    tipo: tipoTop?.toLowerCase(),
+    n_tipo: topo?.ocorrencias,
+    ...ctx.numeros,
+  };
   const acao = pratica.acao.replace(/\{(\w+)\}/g, (m, k: string) => {
     if (valores[k] === undefined || valores[k] === null) return m;
     usados.push(k);
     return String(valores[k]);
   });
+  const taxa = tipoTop && TIPOS_ACIDENTE.includes(tipoTop) ? ocorr.acidentes_por_mil : topo?.por_mil;
+  chamadas.push({ nome: 'propor_acao', entrada: { pratica_id: pratica.id } });
   return {
     pratica_id: pratica.id,
     acao,
-    justificativa: `Prática do guia ligada a ${args.tipoMaisCaro ?? args.foco ?? 'o problema da rota'} (modo simulado).`,
+    justificativa: tipoTop
+      ? `${tipoTop} é o tipo que mais custou na rota no mês${taxa != null ? ` (${String(taxa).replace('.', ',')} por mil viagens)` : ''}; a prática ${pratica.id} do guia trata esse gatilho.`
+      : `A prática ${pratica.id} do guia trata o foco da rota (${ctx.foco ?? 'sem foco definido'}).`,
     numeros_usados: usados,
+    ferramentas_chamadas: chamadas,
   };
 }
 
