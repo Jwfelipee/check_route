@@ -9,6 +9,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod/v4';
 import { sql } from '../db.js';
 import { ia } from '../ia/index.js';
+import { ocorrenciasDaRota } from '../ia/ferramentas.js';
 import {
   CAMPOS_OBRIGATORIOS,
   FichaConfirmada,
@@ -152,7 +153,8 @@ export async function rotasIa(app: FastifyInstance) {
     return {
       ...dados,
       pratica: { id: pratica.id, titulo: pratica.titulo, prazo_dias: pratica.prazo_dias, esforco: pratica.esforco },
-      numeros_fora: numerosFora(dados.acao, p.data.numeros),
+      // Números que vieram do código: os do front e os que as ferramentas devolveram à IA.
+      numeros_fora: numerosFora(dados.acao, [p.data.numeros, await ocorrenciasDaRota(rota.rota_id), { km: rota.km }]),
       meta,
     };
   });
@@ -171,12 +173,24 @@ export async function rotasIa(app: FastifyInstance) {
 }
 
 /**
- * Confere se cada número citado no texto veio do código (controle "a IA não inventa números").
+ * Confere se cada número citado no texto veio do código (controle "a IA não inventa números"):
+ * dos números enviados pelo front ou das ferramentas que a IA consultou.
  * Compara só os dígitos, para aceitar formatos como "12,5%" ou "R$ 1.234".
  */
-function numerosFora(texto: string, numeros: Record<string, unknown>): string[] {
+function numerosFora(texto: string, fontes: unknown[]): string[] {
   const digitos = (s: string) => s.replace(/\D/g, '').replace(/^0+/, '');
-  const conhecidos = new Set(Object.values(numeros).filter((v) => v !== null).map((v) => digitos(String(v))));
+  const conhecidos = new Set<string>();
+  const coleta = (v: unknown): void => {
+    if (v == null) return;
+    if (typeof v === 'number') {
+      // Aceita o valor como veio e as formas arredondadas que a IA costuma citar (inteiro, 1 casa).
+      [v, Math.round(v), Math.round(v * 10) / 10].forEach((n) => conhecidos.add(digitos(String(n))));
+    } else if (typeof v === 'string') {
+      (v.match(/\d[\d.,]*/g) ?? []).forEach((n) => conhecidos.add(digitos(n)));
+    } else if (Array.isArray(v)) v.forEach(coleta);
+    else if (typeof v === 'object') Object.values(v as Record<string, unknown>).forEach(coleta);
+  };
+  fontes.forEach(coleta);
   const citados = texto.match(/\d[\d.,]*/g) ?? [];
   return citados.filter((n) => {
     const d = digitos(n);

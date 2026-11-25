@@ -96,6 +96,7 @@ export async function sugerirAcaoFake(ctx: ContextoSugestao): Promise<SugestaoIa
     tipo: tipoTop?.toLowerCase(),
     n_tipo: topo?.ocorrencias,
     ...ctx.numeros,
+    produto: String(ctx.numeros.produto_mais_afetado ?? 'carga').toLowerCase(),
   };
   const acao = pratica.acao.replace(/\{(\w+)\}/g, (m, k: string) => {
     if (valores[k] === undefined || valores[k] === null) return m;
