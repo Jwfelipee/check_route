@@ -1,0 +1,15 @@
+{
+  "light": {
+    "bad": "#c62828",
+    "border": "#e3e6eb",
+    "card": "#ffffff",
+    "good": "#1a7f37",
+    "ground": "#ffffff",
+    "muted": "#5f6673",
+    "text": "#1d2129",
+    "warning": "#9a6700"
+  },
+  "system": {
+    "name": "Fundo branco"
+  }
+}

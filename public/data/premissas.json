@@ -1,0 +1,181 @@
+[
+ {
+  "perna": "coleta",
+  "tipo": "pilar",
+  "chave": "pct_prazo",
+  "premissa": "Coleta na janela agendada",
+  "descricao": "Coletas feitas dentro da janela combinada com o fornecedor",
+  "peso": 0.25,
+  "nota_zero": 0.8,
+  "nota_cem": 0.97,
+  "formato": "pct"
+ },
+ {
+  "perna": "coleta",
+  "tipo": "pilar",
+  "chave": "pct_primeira",
+  "premissa": "Coleta na 1ª tentativa",
+  "descricao": "Coletas sem viagem perdida: fornecedor com a carga e a nota prontas",
+  "peso": 0.2,
+  "nota_zero": 0.85,
+  "nota_cem": 0.97,
+  "formato": "pct"
+ },
+ {
+  "perna": "coleta",
+  "tipo": "pilar",
+  "chave": "ocorr_100",
+  "premissa": "Ocorrências por 100 coletas",
+  "descricao": "Coleta frustrada, divergência de volumes, nota fiscal com erro e avaria na coleta",
+  "peso": 0.2,
+  "nota_zero": 8,
+  "nota_cem": 2,
+  "formato": "n1"
+ },
+ {
+  "perna": "coleta",
+  "tipo": "pilar",
+  "chave": "custo_vs_orcado",
+  "premissa": "Frete sobre o orçado",
+  "descricao": "Frete pago por coleta dividido pelo frete orçado da rota",
+  "peso": 0.2,
+  "nota_zero": 1.25,
+  "nota_cem": 1.0,
+  "formato": "pct"
+ },
+ {
+  "perna": "coleta",
+  "tipo": "pilar",
+  "chave": "horas_ate_cd",
+  "premissa": "Horas até entrar no CD",
+  "descricao": "Média de horas entre a coleta e a entrada da carga no CD",
+  "peso": 0.15,
+  "nota_zero": 24,
+  "nota_cem": 6,
+  "formato": "horas"
+ },
+ {
+  "perna": "transferencia",
+  "tipo": "pilar",
+  "chave": "pct_prazo",
+  "premissa": "Chegada no hub no prazo",
+  "descricao": "Viagens que chegam ao hub até o horário combinado",
+  "peso": 0.25,
+  "nota_zero": 0.8,
+  "nota_cem": 0.97,
+  "formato": "pct"
+ },
+ {
+  "perna": "transferencia",
+  "tipo": "pilar",
+  "chave": "ocupacao",
+  "premissa": "Ocupação do caminhão",
+  "descricao": "Média do espaço do caminhão usado em cada viagem",
+  "peso": 0.2,
+  "nota_zero": 0.6,
+  "nota_cem": 0.9,
+  "formato": "pct"
+ },
+ {
+  "perna": "transferencia",
+  "tipo": "pilar",
+  "chave": "ocorr_100",
+  "premissa": "Ocorrências por 100 viagens",
+  "descricao": "Avaria no manuseio, erro de triagem, extravio e roubo de carga",
+  "peso": 0.2,
+  "nota_zero": 40,
+  "nota_cem": 8,
+  "formato": "n1"
+ },
+ {
+  "perna": "transferencia",
+  "tipo": "pilar",
+  "chave": "custo_vs_orcado",
+  "premissa": "Frete sobre o orçado",
+  "descricao": "Frete pago por viagem dividido pelo frete orçado da rota",
+  "peso": 0.2,
+  "nota_zero": 1.25,
+  "nota_cem": 1.0,
+  "formato": "pct"
+ },
+ {
+  "perna": "transferencia",
+  "tipo": "pilar",
+  "chave": "horas_crossdock",
+  "premissa": "Horas no cross-docking",
+  "descricao": "Média de horas que a carga fica parada no cross-docking antes de seguir",
+  "peso": 0.15,
+  "nota_zero": 16,
+  "nota_cem": 4,
+  "formato": "horas"
+ },
+ {
+  "perna": "entrega",
+  "tipo": "pilar",
+  "chave": "pct_prazo",
+  "premissa": "Entrega no prazo",
+  "descricao": "Entregas feitas até a data prometida ao cliente",
+  "peso": 0.25,
+  "nota_zero": 0.8,
+  "nota_cem": 0.96,
+  "formato": "pct"
+ },
+ {
+  "perna": "entrega",
+  "tipo": "pilar",
+  "chave": "pct_primeira",
+  "premissa": "Entrega na 1ª tentativa",
+  "descricao": "Entregas sem reentrega por recusa, ausência ou cancelamento",
+  "peso": 0.2,
+  "nota_zero": 0.8,
+  "nota_cem": 0.95,
+  "formato": "pct"
+ },
+ {
+  "perna": "entrega",
+  "tipo": "pilar",
+  "chave": "ocorr_100",
+  "premissa": "Ocorrências por 100 entregas",
+  "descricao": "Avaria, recusa, destinatário ausente, compra cancelada em rota, extravio e roubo",
+  "peso": 0.2,
+  "nota_zero": 6,
+  "nota_cem": 1.5,
+  "formato": "n1"
+ },
+ {
+  "perna": "entrega",
+  "tipo": "pilar",
+  "chave": "custo_vs_orcado",
+  "premissa": "Frete sobre o orçado",
+  "descricao": "Frete pago por entrega dividido pelo frete orçado da rota",
+  "peso": 0.2,
+  "nota_zero": 1.25,
+  "nota_cem": 1.0,
+  "formato": "pct"
+ },
+ {
+  "perna": "entrega",
+  "tipo": "pilar",
+  "chave": "resolucao_dias",
+  "premissa": "Dias para resolver ocorrência",
+  "descricao": "Média de dias entre a ocorrência e a solução (reentrega, estorno ou seguro)",
+  "peso": 0.15,
+  "nota_zero": 15,
+  "nota_cem": 3,
+  "formato": "dias"
+ },
+ {
+  "perna": "todas",
+  "tipo": "parametro",
+  "chave": "faixa_saudavel",
+  "premissa": "Score mínimo de rota saudável",
+  "valor": 85
+ },
+ {
+  "perna": "todas",
+  "tipo": "parametro",
+  "chave": "faixa_atencao",
+  "premissa": "Score mínimo de rota em atenção",
+  "valor": 65
+ }
+]

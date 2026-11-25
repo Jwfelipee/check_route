@@ -1,0 +1,81 @@
+/*
+ * Design tokens · Saúde das rotas
+ * Extraídos do artifact original (dash/look "Fundo branco" + CSS da página).
+ * Regra: componente nunca usa cor/medida solta, só var(--…).
+ */
+:root {
+  /* ---- Cor: superfícies e texto ---- */
+  --color-bg: #ffffff;
+  --color-panel: #ffffff;
+  --color-fg: #1d2129;
+  --color-fg-muted: #5f6673;
+  --color-border: #e3e6eb;
+
+  /* ---- Cor: situação (semântica, usada em score, chips, barras e mapas) ---- */
+  --color-ok: #1a7f37;     /* Saudável  (score >= 85) */
+  --color-warn: #9a6700;   /* Atenção   (65 <= score < 85) */
+  --color-bad: #c62828;    /* Crítica   (score < 65) */
+
+  /* ---- Cor: gráficos ---- */
+  --chart-grid: #edf0f3;
+  --chart-axis: #c7ccd3;
+  --chart-reference: #8a919c;
+  --chart-muted: #c7ccd3;
+
+  /* Fundos derivados (chips, pílulas, mapas): mistura da cor com transparente */
+  --tint-ok: color-mix(in srgb, var(--color-ok) 15%, transparent);
+  --tint-warn: color-mix(in srgb, var(--color-warn) 18%, transparent);
+  --tint-bad: color-mix(in srgb, var(--color-bad) 15%, transparent);
+  --tint-neutral: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  --map-ok: color-mix(in srgb, var(--color-ok) 55%, var(--color-panel));
+  --map-warn: color-mix(in srgb, var(--color-warn) 55%, var(--color-panel));
+  --map-bad: color-mix(in srgb, var(--color-bad) 55%, var(--color-panel));
+  --map-empty: color-mix(in srgb, var(--color-fg) 8%, var(--color-panel));
+
+  /* ---- Tipografia ----
+     O artifact usa Anthropic Sans/Serif (não distribuíveis). Substitutos abertos:
+     Inter (texto/UI) e Source Serif 4 (números grandes e títulos). */
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
+
+  --fs-caption: 10.5px;   /* rótulos em CAIXA ALTA, cabeçalhos de tabela */
+  --fs-xs: 11.5px;        /* notas de KPI, legendas */
+  --fs-sm: 12px;          /* texto auxiliar */
+  --fs-base: 13px;        /* corpo */
+  --fs-md: 15px;          /* títulos de card, lede */
+  --fs-lg: 16px;          /* nome de rota/perna */
+  --fs-h2: 22px;          /* título de seção de perna (serif) */
+  --fs-h1: 24px;          /* título da página (serif) */
+  --fs-kpi: 30px;         /* número de KPI (serif, tabular) */
+
+  /* ---- Espaço, raio, sombra ---- */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --gap-md: 12px;
+  --gap-lg: 20px;
+  --pad-card: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 3px rgba(16, 24, 40, .06);
+  --shadow-pop: 0 6px 18px rgba(16, 24, 40, .12);
+  --shadow-modal: 0 18px 48px rgba(16, 24, 40, .25);
+
+  --content-max: 1180px;
+  color-scheme: light;
+}
+
+/* Tema escuro opcional (o protótipo é só claro; deixado pronto para quem quiser). */
+:root[data-theme='dark'] {
+  --color-bg: #15171c;
+  --color-panel: #1c1f26;
+  --color-fg: #e8eaee;
+  --color-fg-muted: #9aa1ad;
+  --color-border: #2c313a;
+  --color-ok: #3fb950;
+  --color-warn: #d29922;
+  --color-bad: #f85149;
+  --chart-grid: #262a32;
+  --chart-axis: #3a404b;
+  color-scheme: dark;
+}

@@ -1,0 +1,50 @@
+/* ---- Card ---- */
+.ds-card { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--pad-card); min-width: 0; box-shadow: var(--shadow-card); }
+.ds-card > h2 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
+
+/* ---- KPI ---- */
+.ds-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-md); }
+@media (max-width: 900px) { .ds-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .ds-kpis { grid-template-columns: 1fr; } }
+.ds-kpi { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--pad-card); display: flex; flex-direction: column; gap: 4px; min-width: 0; box-shadow: var(--shadow-card); }
+.ds-kpi-l { font-size: var(--fs-sm); font-weight: 600; color: var(--color-fg-muted); }
+.ds-kpi-v { font-family: var(--font-serif); font-size: var(--fs-kpi); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ds-kpi-n { font-size: var(--fs-xs); color: var(--color-fg-muted); }
+.ds-kpi-n span { font-weight: 600; }
+
+/* ---- Chip (situação) e Pill (variação) ---- */
+.ds-chip { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; padding: 2px 9px; border-radius: var(--radius-pill); background: var(--tint-neutral); color: var(--color-fg); }
+.ds-pill { display: inline-block; font-size: 11px; font-weight: 700; border-radius: var(--radius-pill); padding: 1px 8px; background: var(--tint-neutral); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ds-chip[data-c='ok'], .ds-pill[data-c='ok'] { background: var(--tint-ok); }
+.ds-chip[data-c='warn'], .ds-pill[data-c='warn'] { background: var(--tint-warn); }
+.ds-chip[data-c='bad'], .ds-pill[data-c='bad'] { background: var(--tint-bad); }
+
+/* ---- Segmented control (filtro de situação, abas, perna do guia) ---- */
+.ds-seg { display: inline-flex; border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; flex: none; }
+.ds-seg button { appearance: none; border: 0; background: transparent; color: var(--color-fg-muted); padding: 6px 12px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
+.ds-seg button[aria-pressed='true'] { background: var(--color-fg); color: var(--color-bg); }
+.ds-seg button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: -2px; }
+.ds-seg--lg button { padding: 8px 14px; font-size: var(--fs-base); }
+
+/* ---- Botões ---- */
+.ds-btn { appearance: none; border-radius: var(--radius-sm); padding: 6px 12px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
+.ds-btn--primary { background: var(--color-fg); color: var(--color-bg); border: 1px solid var(--color-fg); }
+.ds-btn--secondary { background: transparent; color: var(--color-fg); border: 1px solid var(--color-border); }
+.ds-btn:disabled { opacity: .5; cursor: default; }
+.ds-btn:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+
+/* ---- Barra horizontal com rótulo (padrões de prejuízo, premissas) ---- */
+.ds-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.ds-bar-row { display: grid; grid-template-columns: minmax(110px, 190px) 1fr auto; align-items: center; gap: 8px; font-size: var(--fs-sm); }
+.ds-bar-row > span { color: var(--color-fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-bar-row > em { font-style: normal; font-weight: 600; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ds-bar-row > em small { font-weight: 500; color: var(--color-fg-muted); margin-left: 5px; }
+.ds-track { height: 9px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--color-fg) 9%, transparent); overflow: hidden; min-width: 50px; }
+.ds-track i { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--color-fg-muted); }
+.ds-track i[data-c='ok'] { background: var(--color-ok); }
+.ds-track i[data-c='warn'] { background: var(--color-warn); }
+.ds-track i[data-c='bad'] { background: var(--color-bad); }
+
+/* ---- Select ---- */
+.ds-field { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 600; color: var(--color-fg-muted); }
+.ds-field select { min-width: 170px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-panel); color: var(--color-fg); }
