@@ -11,22 +11,25 @@ Na raiz do monorepo:
 
 ```bash
 npm install
-npm run etl -w app/api   # (uma vez) planilha bronze → banco SQLite da API
-npm run dev              # web em http://localhost:5173 e API em http://localhost:3333
-npm test                 # testes do motor do score
+docker compose up -d --build                # Postgres (localhost:7432) + API (http://localhost:7333)
+docker compose run --rm api npm run etl     # (uma vez) planilha bronze docs/bronze_planilha.xlsx → Postgres
+docker compose restart api                  # a API passa a ler o gold
+npm run dev -w app/web                      # painel em http://localhost:5173
+npm test                                    # testes do motor do score
 npm run build
 npm run typecheck
 ```
 
-O Turborepo roda cada script só no pacote que o define. `dev` sobe web e API juntos.
-
 Sem configurar nada, o app lê os dados fictícios de `app/web/public/data/`. Para ligar na API,
-copie `app/web/.env.example` para `app/web/.env` e preencha `VITE_API_URL=http://localhost:3333`
+copie `app/web/.env.example` para `app/web/.env` e preencha `VITE_API_URL=http://localhost:7333`
 (contrato em [docs/DADOS.md](docs/DADOS.md)).
+
+Para desenvolver a API fora do Docker: `docker compose up -d db`, copie `app/api/.env.example` para
+`app/api/.env` e rode `npm run dev` na raiz (o Turborepo sobe web e API juntos, API na porta 7333).
 
 ### API (`app/api`)
 
-Fastify + TypeScript + SQLite nativo do Node 24 (`node:sqlite`).
+Fastify + TypeScript + **PostgreSQL 17** (driver `pg`), empacotada em Docker (`app/api/Dockerfile`, `docker-compose.yml`).
 
 - Serve o contrato de `docs/DADOS.md`. Lê o **gold** gerado da planilha bronze quando `npm run etl` já rodou
   e, se não, os JSON de `app/web/public/data`. `GET /health` diz qual fonte está ativa.
@@ -37,30 +40,33 @@ Fastify + TypeScript + SQLite nativo do Node 24 (`node:sqlite`).
 
 | Comando | O que faz |
 |---|---|
-| `npm run etl -w app/api` | lê `docs/bronze_planilha.xlsx` (ou `app/api/data/bronze/`), grava `bronze_*` e `gold_*` em `app/api/data/app.db` |
-| `npm run etl:check -w app/api` | compara o gold com os JSON do front, campo a campo |
-| `npm run eval -w app/api` | mede o acerto da IA classificando os relatos reais do SAC (gabarito da bronze) |
+| `docker compose run --rm api npm run etl` | lê `docs/bronze_planilha.xlsx` e grava `bronze_*` e `gold_*` no Postgres |
+| `docker compose run --rm api npm run etl:check` | compara o gold com os JSON do front, campo a campo |
+| `docker compose run --rm api npm run eval` | mede o acerto da IA classificando os relatos reais do SAC (gabarito da bronze) |
+
+Fora do Docker, os mesmos comandos são `npm run etl -w app/api`, `npm run etl:check -w app/api` e `npm run eval -w app/api`.
+Para a IA real, exporte `ANTHROPIC_API_KEY` antes do `docker compose up` (ou ponha em `app/api/.env` fora do Docker).
 
 ### Roteiro de chamadas da demo (Transferência)
 
 ```bash
 # 1. relato incompleto: a IA devolve o que falta perguntar ao motorista
-curl -s -XPOST localhost:3333/ocorrencias/extrair -H 'content-type: application/json' \
+curl -s -XPOST localhost:7333/ocorrencias/extrair -H 'content-type: application/json' \
   -d '{"relato":"Tombou o caminhão, a carga de geladeiras ficou toda espalhada"}'
 
 # 2. relato completo (pode mandar imagemBase64 da foto): ficha pronta para revisar
-curl -s -XPOST localhost:3333/ocorrencias/extrair -H 'content-type: application/json' \
+curl -s -XPOST localhost:7333/ocorrencias/extrair -H 'content-type: application/json' \
   -d '{"relato":"Hoje 03:40 a carreta ABC1D23 indo pro hub de Belo Horizonte tombou na BR-381 km 512, pista molhada, sem feridos. 40 caixas de geladeira, prejuízo uns R$ 38.000"}'
 
 # 3. a pessoa confirma a ficha (campos de "ficha" da resposta anterior) e ela entra na base
-curl -s -XPOST localhost:3333/ocorrencias -H 'content-type: application/json' -d '<ficha revisada>'
+curl -s -XPOST localhost:7333/ocorrencias -H 'content-type: application/json' -d '<ficha revisada>'
 
 # 4. ação sugerida para o padrão da rota, com os números que o front calculou
-curl -s -XPOST localhost:3333/acoes/sugerir -H 'content-type: application/json' \
+curl -s -XPOST localhost:7333/acoes/sugerir -H 'content-type: application/json' \
   -d '{"rota_id":"T02","foco":"ocorr_100","tipo_mais_caro":"Tombamento","numeros":{"score":58,"n_tipo":3,"tipo":"Tombamento","produto":"Eletrodomésticos"}}'
 
 # 5. custo e latência de cada chamada de IA
-curl -s localhost:3333/ia/uso
+curl -s localhost:7333/ia/uso
 ```
 
 No front, depois do `POST /ocorrencias`, invalide a query `['fontes']` para o score da rota recalcular.

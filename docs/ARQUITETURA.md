@@ -15,10 +15,10 @@
 | Fontes | **Inter** + **Source Serif 4** (`@fontsource-variable`) | Substitutos abertos das fontes Anthropic Sans/Serif usadas no artifact. |
 | Testes | **Vitest** | Testa o motor do score com os dados reais do protótipo. |
 
-Backend: `app/api` (**Fastify + TypeScript + `node:sqlite`**, porta 3333). Serve os recursos de
+Backend: `app/api` (**Fastify + TypeScript + PostgreSQL 17**, porta 7333, em Docker via `docker-compose.yml`). Serve os recursos de
 [DADOS.md](DADOS.md) a partir do gold gerado da planilha bronze (`npm run etl -w app/api`) ou, sem ETL,
 dos JSON de `app/web/public/data`. Com `VITE_API_URL` definido, as ações saem do `localStorage` e vão para
-`POST/PATCH /acoes` (SQLite). A API também roda a IA do recorte (Claude Haiku 5.5 na extração do relato,
+`POST/PATCH /acoes` (Postgres). A API também roda a IA do recorte (Claude Haiku 5.5 na extração do relato,
 Claude Sonnet 5.5 na ação sugerida), com modo simulado quando não há `ANTHROPIC_API_KEY`.
 O app ainda roda só com os JSON, sem a API.
 

@@ -78,8 +78,8 @@ A base real é a planilha `bronze_planilha` (22 abas de ERP, TMS, WMS, e-commerc
 configuração; posição 2026-11-24). O ETL de `app/api` transforma essa planilha nos recursos acima:
 
 ```bash
-npm run etl -w app/api        # lê docs/bronze_planilha.xlsx (ou app/api/data/bronze/) → SQLite
-npm run etl:check -w app/api  # compara o gold com os JSON de public/data, campo a campo
+docker compose run --rm api npm run etl        # lê docs/bronze_planilha.xlsx → Postgres (bronze_* e gold_*)
+docker compose run --rm api npm run etl:check  # compara o gold com os JSON de public/data, campo a campo
 ```
 
 Hoje o gold sai **idêntico** aos JSON do front nos 5 recursos. Regras aplicadas:
