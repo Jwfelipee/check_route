@@ -44,3 +44,10 @@ export function resumoParaConfirmar(f: Record<string, unknown>, nomeHub?: string
   if (f.resumo) linhas.push('', String(f.resumo));
   return linhas.join('\n');
 }
+
+export const SAUDACAO =
+  'Olá! Sou o assistente de ocorrências. Me conte o que aconteceu na viagem: o que houve, onde, quando e para qual hub a carga ia.\n' +
+  'A qualquer momento, mande *reiniciar* para começar de novo.';
+
+/** "reiniciar", "recomeçar", "novo atendimento", "#novo", "cancelar"… (a mensagem inteira, sem mais nada). */
+export const COMANDO_REINICIAR = /^\s*#?\s*(reiniciar|recome[cç]ar|novo atendimento|nova ocorr[eê]ncia|novo|cancelar)\s*[.!]*\s*$/i;

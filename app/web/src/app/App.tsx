@@ -9,6 +9,7 @@ import { Guia } from '@/features/guia/Guia';
 import { VisaoGeral } from '@/features/visao/VisaoGeral';
 import { OcorrenciasPagina } from '@/features/ocorrencias/OcorrenciasPagina';
 import { AcoesPagina } from '@/features/acoes/AcoesPagina';
+import { Atendimentos } from '@/features/atendimento/Atendimentos';
 
 const TITULO: Record<Pagina, string> = {
   visao: 'Visão geral',
@@ -16,6 +17,7 @@ const TITULO: Record<Pagina, string> = {
   ocorrencias: 'Ocorrências',
   acoes: 'Ações',
   guia: 'Guia de boas práticas',
+  atendimentos: 'Atendimentos',
 };
 
 /** Casca do produto: menu lateral (248 px) + cabeçalho (64 px) + conteúdo com margem de 24 px. */
@@ -37,7 +39,7 @@ export function App() {
           </button>
           <div className="cr-head-t">
             <h1>{TITULO[pagina]}</h1>
-            <p>{periodo} | {pagina === 'rotas' ? 'Por etapa' : 'Todas as etapas'} · posição de {ref ? fmt.data(ref.data) : '—'}</p>
+            <p>{pagina === 'atendimentos' ? 'Conversas do assistente de ocorrências no WhatsApp' : <>{periodo} | {pagina === 'rotas' ? 'Por etapa' : 'Todas as etapas'} · posição de {ref ? fmt.data(ref.data) : '—'}</>}</p>
           </div>
         </header>
 
@@ -68,6 +70,8 @@ export function App() {
           {pagina === 'ocorrencias' && <OcorrenciasPagina />}
           {pagina === 'acoes' && <AcoesPagina />}
           {pagina === 'guia' && <Guia />}
+
+          {pagina === 'atendimentos' && <Atendimentos />}
         </main>
       </div>
     </div>

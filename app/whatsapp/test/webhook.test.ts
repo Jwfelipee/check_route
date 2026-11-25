@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { assinaturaValida, lerMensagens } from '../src/meta/webhook.js';
-import { faltandoNaFicha, resumoParaConfirmar } from '../src/agente/ficha.js';
+import { COMANDO_REINICIAR, faltandoNaFicha, resumoParaConfirmar } from '../src/agente/ficha.js';
 
 const payload = (mensagem: Record<string, unknown>) => ({
   object: 'whatsapp_business_account',
@@ -50,5 +50,12 @@ describe('regras da ficha', () => {
     expect(t).toContain('Hub Belo Horizonte');
     expect(t).toContain('25/11 às 03:40');
     expect(t).toMatch(/R\$\s?38\.000/);
+  });
+});
+
+describe('comando de reinício', () => {
+  it('aceita as formas comuns, só como mensagem inteira', () => {
+    for (const s of ['reiniciar', 'Recomeçar!', '#novo', 'novo atendimento', ' cancelar ', 'Nova ocorrência']) expect(COMANDO_REINICIAR.test(s)).toBe(true);
+    for (const s of ['quero reiniciar o caminhão', 'novo pneu furou', 'ok']) expect(COMANDO_REINICIAR.test(s)).toBe(false);
   });
 });

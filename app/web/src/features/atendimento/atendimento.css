@@ -1,0 +1,45 @@
+/* Aba Atendimentos: lista de conversas + conversa aberta. Só tokens do design system. */
+.at-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.at-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.at-form { display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; }
+.at-form .ds-field, .at-form input { width: 100%; }
+
+.at-grid { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: var(--gap-md); align-items: start; }
+@media (max-width: 1100px) { .at-grid { grid-template-columns: 1fr; } .at-lista { max-height: 420px; } }
+
+.at-lista { display: flex; flex-direction: column; gap: var(--space-3); max-height: calc(100vh - var(--header-h) - 140px); }
+.at-lista .ds-seg { align-self: flex-start; }
+.at-busca, .at-busca input { width: 100%; min-width: 0; }
+.at-itens { list-style: none; margin: 0 calc(var(--space-2) * -1); padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-1); }
+.at-item { appearance: none; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: 2px; cursor: pointer; color: var(--color-fg); }
+.at-item:hover { background: var(--color-subtle); }
+.at-item[aria-current] { background: var(--color-subtle); border-color: var(--action-primary); }
+.at-item-l1 { display: flex; justify-content: space-between; gap: var(--space-2); }
+.at-item-l1 b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-item-l1 time, .at-item-tel { font-size: var(--fs-caption); color: var(--color-fg-muted); white-space: nowrap; }
+.at-item-prev { font-size: var(--fs-sm); color: var(--color-fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-item-tags { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-top: 2px; }
+
+.at-vazio { display: flex; align-items: center; justify-content: center; min-height: 240px; }
+.at-det { display: flex; flex-direction: column; gap: var(--space-3); }
+.at-det-h { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap; }
+.at-det-h .ds-note { white-space: nowrap; }
+.at-acoes { display: flex; align-items: center; gap: var(--space-2) var(--space-3); flex-wrap: wrap; }
+.at-confirma { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font-size: var(--fs-sm); color: var(--color-bad); }
+.at-check { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); color: var(--color-fg-muted); margin-left: auto; cursor: pointer; }
+
+.at-ficha { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); background: var(--color-bg); }
+.at-ficha summary { cursor: pointer; font-weight: 600; font-size: var(--fs-sm); }
+.at-ficha pre { margin: var(--space-2) 0 0; font-family: inherit; font-size: var(--fs-sm); white-space: pre-wrap; }
+
+.at-msgs { display: flex; flex-direction: column; gap: var(--space-2); max-height: 52vh; min-height: 240px; overflow-y: auto; padding: var(--space-3); background: var(--color-bg); border-radius: var(--radius-sm); }
+.at-bolha { max-width: 78%; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--color-panel); border: 1px solid var(--color-border); align-self: flex-start; }
+.at-bolha[data-autor='bot'] { align-self: flex-end; background: var(--color-subtle); border-color: transparent; }
+.at-bolha[data-autor='atendente'] { align-self: flex-end; background: var(--tint-info); border-color: transparent; }
+.at-bolha p { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.at-bolha-a { display: block; font-size: var(--fs-caption); color: var(--color-fg-muted); font-weight: 600; margin-bottom: 2px; }
+.at-sis { align-self: center; margin: 0; font-size: var(--fs-caption); color: var(--color-fg-muted); background: var(--color-neutral-bg); padding: 2px var(--space-3); border-radius: var(--radius-pill); text-align: center; }
+
+.at-compor { display: flex; gap: var(--space-2); align-items: flex-end; }
+.at-compor textarea { flex: 1; min-width: 0; resize: vertical; padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-panel); color: var(--color-fg); line-height: var(--lh-body); }
+.at-dica { margin: 0; }

@@ -4,11 +4,12 @@
  * ou envia a confirmação. Serve para a demo não travar e para os testes.
  */
 import { executar, type Contexto } from './ferramentas.js';
+import { SAUDACAO } from './ficha.js';
 
 export async function turnoSimulado(ctx: Contexto, _entrada: string): Promise<string | null> {
   const c = ctx.conversa;
   if (c.relato.trim().length < 5) {
-    return 'Olá! Sou o assistente de ocorrências. Me conte o que aconteceu na viagem: o que houve, onde, quando e para qual hub a carga ia.';
+    return SAUDACAO;
   }
   const analise = JSON.parse((await executar('analisar_relato', { relato: c.relato }, ctx)).texto) as { completa: boolean; pergunta_sugerida: string | null };
   if (!analise.completa) return analise.pergunta_sugerida;

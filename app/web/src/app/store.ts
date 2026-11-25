@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import type { Filtros, Perna, Situacao } from '@/lib/types';
 
-export type Pagina = 'visao' | 'rotas' | 'ocorrencias' | 'acoes' | 'guia';
+export type Pagina = 'visao' | 'rotas' | 'ocorrencias' | 'acoes' | 'atendimentos' | 'guia';
 
 interface Estado {
   pagina: Pagina;
@@ -21,13 +21,13 @@ interface Estado {
   abrirPratica: (id: string) => void;
 }
 
-// Links diretos: #visao, #ocorrencias, #acoes, #guia, #perna-coleta|transferencia|entrega.
+// Links diretos: #visao, #ocorrencias, #acoes, #atendimentos, #guia, #perna-coleta|transferencia|entrega.
 const hash = () => location.hash.replace('#', '');
 const pernaDoHash = (): Perna => {
   const h = hash().replace('perna-', '');
   return h === 'transferencia' || h === 'entrega' ? h : 'coleta';
 };
-const PAGINAS: Pagina[] = ['visao', 'ocorrencias', 'acoes', 'guia'];
+const PAGINAS: Pagina[] = ['visao', 'ocorrencias', 'acoes', 'atendimentos', 'guia'];
 const paginaDoHash = (): Pagina => (hash().startsWith('perna-') ? 'rotas' : (PAGINAS.find((p) => p === hash()) ?? 'visao'));
 const gravaHash = (h: string) => history.replaceState(null, '', '#' + h);
 
