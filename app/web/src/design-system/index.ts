@@ -6,3 +6,5 @@ export * from './components/Button';
 export * from './components/BarList';
 export * from './components/ScoreGauge';
 export * from './tone';
+export * from './components/Icon';
+export * from './components/Alert';

@@ -4,7 +4,7 @@ export interface BarItem { key: string; label: string; value: number; display: s
 
 /** Lista de barras horizontais proporcionais ao maior valor (ex.: prejuízo por tipo de ocorrência). */
 export function BarList({ items, empty = 'Nenhuma ocorrência no mês.' }: { items: BarItem[]; empty?: string }) {
-  if (!items.length) return <div className="ds-muted" style={{ fontSize: 11 }}>{empty}</div>;
+  if (!items.length) return <div className="ds-muted" style={{ fontSize: 'var(--fs-sm)' }}>{empty}</div>;
   const max = Math.max(...items.map((x) => x.value)) || 1;
   return (
     <div className="ds-bars">

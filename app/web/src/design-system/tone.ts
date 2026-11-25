@@ -1,6 +1,6 @@
 import type { Situacao } from '@/lib/types';
 
-export type Tom = 'ok' | 'warn' | 'bad' | '';
+export type Tom = 'ok' | 'warn' | 'bad' | 'info' | '';
 
 export const tomDaSituacao = (s: Situacao | null | undefined): Tom =>
   s === 'Saudável' ? 'ok' : s === 'Atenção' ? 'warn' : s === 'Crítica' ? 'bad' : '';
@@ -14,4 +14,4 @@ export const tomDaVariacao = (v: number | null | undefined, bomQuando: 'up' | 'd
   v == null || Math.abs(v) < tolerancia ? '' : (v > 0) === (bomQuando === 'up') ? 'ok' : 'bad';
 
 export const corDoTom = (t: Tom) =>
-  t === 'ok' ? 'var(--color-ok)' : t === 'warn' ? 'var(--color-warn)' : t === 'bad' ? 'var(--color-bad)' : 'var(--color-fg-muted)';
+  t === 'ok' ? 'var(--color-ok)' : t === 'warn' ? 'var(--color-warn)' : t === 'bad' ? 'var(--color-bad)' : t === 'info' ? 'var(--color-info)' : 'var(--color-fg-muted)';
