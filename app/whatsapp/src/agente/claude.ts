@@ -72,8 +72,12 @@ export async function turnoClaude(ctx: Contexto, entradaUsuario: string): Promis
     const resp = await client().beta.messages.create({
       model: config.modelo,
       max_tokens: 4000,
-      betas: ['server-side-fallback-2026-07-01'],
+      // thinking-binding-controls: se o raciocínio salvo no histórico não bater com o prompt/ferramentas atuais
+      // (deploy que mudou o SYSTEM, ferramentas do MCP que entram e saem, contato editado), a API descarta
+      // esses blocos e segue, em vez de recusar a conversa inteira com 400.
+      betas: ['server-side-fallback-2026-07-01', 'thinking-binding-controls-2026-08-01'],
       fallbacks: 'default',
+      thinking: { type: 'adaptive', block_binding: { prefix_mismatch_behavior: 'drop_block' } },
       system: [
         { type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: remetente },
@@ -82,6 +86,10 @@ export async function turnoClaude(ctx: Contexto, entradaUsuario: string): Promis
       output_config: { effort: 'low' },
       messages: h,
     });
+
+    const descartados = (resp as { input_transformations?: { type: string; reason?: string }[] }).input_transformations
+      ?.filter((x) => x.type === 'thinking_dropped') ?? [];
+    if (descartados.length) console.warn(`[wa] ${descartados.length} bloco(s) de raciocínio descartado(s): ${[...new Set(descartados.map((x) => x.reason))].join(', ')}`);
 
     h.push({ role: 'assistant', content: resp.content as Anthropic.Beta.BetaContentBlockParam[] });
     const texto = resp.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text').map((b) => b.text).join('\n').trim();

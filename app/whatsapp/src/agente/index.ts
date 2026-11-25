@@ -30,7 +30,19 @@ export function processar(m: MensagemRecebida): Promise<void> {
   return naFila(m.de, () => tratar(m)).catch((e) => console.error(`[wa] erro com ${m.de}:`, e));
 }
 
-const turno = (c: Conversa, entrada: string) => (config.iaReal ? turnoClaude : turnoSimulado)({ conversa: c }, entrada);
+/**
+ * Um turno do agente. Se a IA falhar (rede, API fora, histórico recusado), o motorista não fica sem resposta:
+ * o histórico do modelo é zerado (relato e ficha ficam) para a próxima mensagem recomeçar limpa.
+ */
+async function turno(c: Conversa, entrada: string): Promise<string | null> {
+  try {
+    return await (config.iaReal ? turnoClaude : turnoSimulado)({ conversa: c }, entrada);
+  } catch (e) {
+    console.error(`[wa] falha no agente com ${c.telefone}:`, (e as Error).message);
+    c.historico = [];
+    return 'Tive um problema aqui do meu lado e não consegui processar sua mensagem. Pode mandar de novo, por favor?';
+  }
+}
 
 function descrever(m: MensagemRecebida): { tipo: string; texto: string } {
   switch (m.tipo) {
