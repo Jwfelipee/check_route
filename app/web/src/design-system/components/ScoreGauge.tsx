@@ -15,7 +15,7 @@ export function ScoreGauge({ score, healthy = 85, warning = 65, label, width = 9
   return (
     <svg viewBox="0 0 220 118" width={width} role="img" aria-label={label} style={{ display: 'block', height: 'auto' }}>
       <g transform="translate(110,98)">
-        <path d={arc({ startAngle: -Math.PI / 2, endAngle: Math.PI / 2 })!} fill="color-mix(in srgb, var(--color-fg) 9%, transparent)" />
+        <path d={arc({ startAngle: -Math.PI / 2, endAngle: Math.PI / 2 })!} fill="var(--color-subtle)" />
         <path d={faixa({ startAngle: a, endAngle: A(100) })!} fill="var(--color-ok)" opacity={0.5} />
         {score != null && score > 0 && <path d={arc({ startAngle: -Math.PI / 2, endAngle: A(score) })!} fill={cor} />}
         <line x1={sx * (r - 6)} y1={sy * (r - 6)} x2={sx * (R + 6)} y2={sy * (R + 6)} strokeWidth={2.5} stroke="var(--color-fg)" />

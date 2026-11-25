@@ -1,50 +1,72 @@
-/* ---- Card ---- */
+/* ---- Card (raio 12, borda discreta) ---- */
 .ds-card { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--pad-card); min-width: 0; box-shadow: var(--shadow-card); }
-.ds-card > h2 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
+.ds-card > h2, .ds-card-t { margin: 0; font-size: var(--fs-md); line-height: 24px; font-weight: 600; }
 
-/* ---- KPI ---- */
+/* ---- KPI: título, valor, unidade, período/comparação ---- */
 .ds-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-md); }
-@media (max-width: 900px) { .ds-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .ds-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .ds-kpis { grid-template-columns: 1fr; } }
-.ds-kpi { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--pad-card); display: flex; flex-direction: column; gap: 4px; min-width: 0; box-shadow: var(--shadow-card); }
-.ds-kpi-l { font-size: var(--fs-sm); font-weight: 600; color: var(--color-fg-muted); }
-.ds-kpi-v { font-family: var(--font-serif); font-size: var(--fs-kpi); line-height: 1.1; font-variant-numeric: tabular-nums; }
-.ds-kpi-n { font-size: var(--fs-xs); color: var(--color-fg-muted); }
+.ds-kpi { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--pad-card); display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; box-shadow: var(--shadow-card); }
+.ds-kpi-l { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--color-fg-muted); }
+.ds-kpi-v { font-size: var(--fs-metric); line-height: var(--lh-metric); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-fg); }
+.ds-kpi-v small { font-size: var(--fs-md); font-weight: 600; color: var(--color-fg-muted); margin-left: 2px; }
+.ds-kpi-n { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--color-fg-muted); }
 .ds-kpi-n span { font-weight: 600; }
 
-/* ---- Chip (situação) e Pill (variação) ---- */
-.ds-chip { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; padding: 2px 9px; border-radius: var(--radius-pill); background: var(--tint-neutral); color: var(--color-fg); }
-.ds-pill { display: inline-block; font-size: 11px; font-weight: 700; border-radius: var(--radius-pill); padding: 1px 8px; background: var(--tint-neutral); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* ---- Chip (situação, com texto sempre) e Pill (variação) ---- */
+.ds-chip { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; padding: 2px 10px; border-radius: var(--radius-pill); background: var(--tint-neutral); color: var(--color-neutral); white-space: nowrap; }
+.ds-pill { display: inline-block; font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; border-radius: var(--radius-pill); padding: 1px 8px; background: var(--tint-neutral); color: var(--color-neutral); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ds-chip[data-c='ok'], .ds-pill[data-c='ok'] { background: var(--tint-ok); }
 .ds-chip[data-c='warn'], .ds-pill[data-c='warn'] { background: var(--tint-warn); }
 .ds-chip[data-c='bad'], .ds-pill[data-c='bad'] { background: var(--tint-bad); }
+.ds-chip[data-c='info'], .ds-pill[data-c='info'] { background: var(--tint-info); }
 
-/* ---- Segmented control (filtro de situação, abas, perna do guia) ---- */
-.ds-seg { display: inline-flex; border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; flex: none; }
-.ds-seg button { appearance: none; border: 0; background: transparent; color: var(--color-fg-muted); padding: 6px 12px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
-.ds-seg button[aria-pressed='true'] { background: var(--color-fg); color: var(--color-bg); }
-.ds-seg button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: -2px; }
-.ds-seg--lg button { padding: 8px 14px; font-size: var(--fs-base); }
+/* ---- Segmented control (filtros, abas) ---- */
+.ds-seg { display: inline-flex; border: 1px solid var(--color-border); border-radius: var(--radius-sm); overflow: hidden; flex: none; background: var(--color-panel); }
+.ds-seg button { appearance: none; border: 0; background: transparent; color: var(--color-fg-muted); padding: 0 var(--space-4); min-height: 36px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
+.ds-seg button + button { border-left: 1px solid var(--color-border); }
+.ds-seg button:hover { background: var(--color-subtle); color: var(--color-fg); }
+.ds-seg button[aria-pressed='true'] { background: var(--action-primary); color: var(--brand-white); }
+.ds-seg button:focus-visible { outline: 2px solid var(--action-focus); outline-offset: -2px; }
+.ds-seg--lg button { min-height: var(--control-h); font-size: var(--fs-body); }
 
-/* ---- Botões ---- */
-.ds-btn { appearance: none; border-radius: var(--radius-sm); padding: 6px 12px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
-.ds-btn--primary { background: var(--color-fg); color: var(--color-bg); border: 1px solid var(--color-fg); }
-.ds-btn--secondary { background: transparent; color: var(--color-fg); border: 1px solid var(--color-border); }
-.ds-btn:disabled { opacity: .5; cursor: default; }
-.ds-btn:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+/* ---- Botões: primário, secundário, terciário, destrutivo ---- */
+.ds-btn { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-h); border-radius: var(--radius-sm); padding: 0 var(--space-5); font-size: var(--fs-body); font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: background-color .15s, border-color .15s, color .15s; }
+.ds-btn--primary { background: var(--action-primary); color: var(--brand-white); }
+.ds-btn--primary:hover:not(:disabled) { background: var(--action-hover); }
+.ds-btn--secondary { background: var(--color-panel); color: var(--action-primary); border-color: var(--action-primary); }
+.ds-btn--secondary:hover:not(:disabled) { background: var(--color-subtle); }
+.ds-btn--tertiary { background: transparent; color: var(--action-primary); padding: 0 var(--space-3); }
+.ds-btn--tertiary:hover:not(:disabled) { text-decoration: underline; }
+.ds-btn--danger { background: var(--color-bad); color: var(--brand-white); }
+.ds-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ds-btn:focus-visible { outline: 2px solid var(--action-focus); outline-offset: 2px; }
+.ds-btn[aria-busy='true'] { cursor: progress; }
 
-/* ---- Barra horizontal com rótulo (padrões de prejuízo, premissas) ---- */
-.ds-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-.ds-bar-row { display: grid; grid-template-columns: minmax(110px, 190px) 1fr auto; align-items: center; gap: 8px; font-size: var(--fs-sm); }
-.ds-bar-row > span { color: var(--color-fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ---- Alerta: sucesso, atenção, crítico, informação, neutro (sempre ícone + texto) ---- */
+.ds-alert { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); border: 1px solid; font-size: var(--fs-sm); line-height: 20px; }
+.ds-alert svg { flex: none; margin-top: 1px; }
+.ds-alert b { display: block; }
+.ds-alert[data-c='ok'] { background: var(--color-ok-bg); border-color: color-mix(in srgb, var(--color-ok) 30%, transparent); }
+.ds-alert[data-c='warn'] { background: var(--color-warn-bg); border-color: color-mix(in srgb, var(--color-warn) 30%, transparent); }
+.ds-alert[data-c='bad'] { background: var(--color-bad-bg); border-color: color-mix(in srgb, var(--color-bad) 30%, transparent); }
+.ds-alert[data-c='info'] { background: var(--color-info-bg); border-color: color-mix(in srgb, var(--color-info) 30%, transparent); }
+.ds-alert[data-c='neutral'] { background: var(--color-neutral-bg); border-color: var(--color-border); color: var(--color-neutral); }
+.ds-alert > div { color: var(--color-fg); }
+
+/* ---- Barra horizontal com rótulo (perdas por etapa, padrões de prejuízo) ---- */
+.ds-bars { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-2); }
+.ds-bar-row { display: grid; grid-template-columns: minmax(110px, 190px) 1fr auto; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); }
+.ds-bar-row > span { color: var(--color-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ds-bar-row > em { font-style: normal; font-weight: 600; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.ds-bar-row > em small { font-weight: 500; color: var(--color-fg-muted); margin-left: 5px; }
-.ds-track { height: 9px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--color-fg) 9%, transparent); overflow: hidden; min-width: 50px; }
-.ds-track i { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--color-fg-muted); }
+.ds-bar-row > em small { font-weight: 500; color: var(--color-fg-muted); margin-left: 6px; }
+.ds-track { height: 10px; border-radius: var(--radius-pill); background: var(--color-subtle); overflow: hidden; min-width: 50px; }
+.ds-track i { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--action-primary); }
 .ds-track i[data-c='ok'] { background: var(--color-ok); }
 .ds-track i[data-c='warn'] { background: var(--color-warn); }
 .ds-track i[data-c='bad'] { background: var(--color-bad); }
 
-/* ---- Select ---- */
-.ds-field { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 600; color: var(--color-fg-muted); }
-.ds-field select { min-width: 170px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-panel); color: var(--color-fg); }
+/* ---- Campo (rótulo acima, controle de 44 px) ---- */
+.ds-field { display: inline-flex; flex-direction: column; gap: var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--color-fg); }
+.ds-field select, .ds-field input { min-width: 190px; min-height: var(--control-h); padding: 0 var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-panel); color: var(--color-fg); }
+.ds-field select:hover, .ds-field input:hover { border-color: var(--color-fg-muted); }

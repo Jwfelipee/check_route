@@ -1,4 +1,4 @@
-import { ScoreGauge, tomDoScore } from '@/design-system';
+import { Icon, ScoreGauge, tomDoScore } from '@/design-system';
 import { usePainel } from '@/data/hooks';
 import { fmt } from '@/lib/format';
 import { faixas } from '@/lib/score';
@@ -16,7 +16,7 @@ export function PernaSelector() {
   const { perna, setPerna } = useFiltros();
   const f = data ? faixas(data.fontes.premissas) : { ok: 85, atencao: 65 };
   return (
-    <div className="sr-pernas" id="pernas" role="group" aria-label="Escolher a perna da operação">
+    <div className="sr-pernas" id="pernas" role="group" aria-label="Escolher a etapa da operação">
       {CARTOES.flatMap((c, i) => {
         const k = data?.kpisTotal.find((x) => x.perna === c.perna);
         const el = (
@@ -24,16 +24,16 @@ export function PernaSelector() {
             <span className="sr-pb-t"><span className="sr-pb-i">{c.n}</span><span className="sr-pb-n">{c.nome}</span><span className="ds-caption">{c.en}</span></span>
             <span className="sr-pb-d">{c.desc}</span>
             <span className="sr-pb-m">
-              <ScoreGauge score={k?.score ?? null} healthy={f.ok} warning={f.atencao} label={`Score médio da perna ${c.nome}: ${fmt.int(k?.score)} de 100`} />
+              <ScoreGauge score={k?.score ?? null} healthy={f.ok} warning={f.atencao} label={`Score médio da etapa ${c.nome}: ${fmt.int(k?.score)} de 100`} />
               <span className="sr-pb-k">
-                <span className={'sr-pb-v' + (k ? '' : ' ds-skeleton')} data-c={tomDoScore(k?.score, f) || undefined}>{fmt.int(k?.score)}</span>
+                <span className={'sr-pb-v' + (k ? '' : ' ds-skeleton')} data-c={tomDoScore(k?.score, f) || undefined}>{fmt.int(k?.score)}{k && <small>/100</small>}</span>
                 <span className="sr-pb-s"><b>{fmt.int(k?.n_criticas)}</b> de <b>{fmt.int(k?.n_rotas)}</b> rotas críticas</span>
                 <span className="sr-pb-s">Prejuízo <b>{fmt.brlk(k?.prejuizo)}</b></span>
               </span>
             </span>
           </button>
         );
-        return i ? [<span key={'s' + i} className="sr-seta" aria-hidden="true">→</span>, el] : [el];
+        return i ? [<span key={'s' + i} className="sr-seta" aria-hidden="true"><Icon name="seta" /></span>, el] : [el];
       })}
     </div>
   );

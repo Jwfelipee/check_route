@@ -1,86 +1,104 @@
-# Design system · Saúde das rotas
+# Design system · CheckRoute
 
-Extraído do artifact original (tema "Fundo branco"). Fonte da verdade: `app/web/src/design-system/tokens.css`.
+Implementação do **CheckRoute Design System v1.0** (pacote `CheckRoute.zip`, enviado no Slack da Equipe 3:
+manual da marca, `tokens.json`, README técnico e PDF). Fonte da verdade no código:
+`app/web/src/design-system/tokens.css`. Os tokens seguem o `tokens.json` sem alteração de valor.
 
 ## Princípios
 
-1. **Fundo branco, tinta escura, cor só para situação.** A interface é neutra; verde, âmbar e vermelho aparecem apenas para dizer se algo está saudável, em atenção ou crítico.
-2. **Número é protagonista.** KPIs e scores em serif grande, sempre tabulares.
-3. **Explicar antes de mostrar.** Todo card tem uma nota curta dizendo o que é e como ler.
-4. **Responsivo até ~400 px.** Grids com `auto-fit`, nada de largura fixa; gráficos medem `clientWidth`.
+1. **Marca no produto: símbolo + nome em texto, sem slogan.** O PNG do símbolo não tem versão negativa homologada,
+   então no menu escuro ele fica sobre um quadro branco (não aplicar sobre fundo poluído, não recolorir).
+2. **Cor de situação sempre com texto.** Chips dizem "Saudável", "Atenção", "Crítica"; alertas têm ícone + texto.
+3. **Valores explícitos.** KPI com título, valor, unidade (`/100`), período e base da comparação. Ausência de valor
+   aparece como "—" ou "Não informado", nunca zero. Taxa com denominador zero = "Indisponível".
+4. **Estimado ≠ comprovado.** "Economia estimada" não usa verde; ação sugerida mostra a fonte do guia e só vale depois
+   de validada (nada é aprovado automaticamente).
+5. **Base sintética identificada** na Visão geral.
 
-## Cores
+## Cores (tokens.json → CSS)
 
-| Token | Claro | Uso |
-|---|---|---|
-| `--color-bg` / `--color-panel` | `#ffffff` | fundo da página e dos cards |
-| `--color-fg` | `#1d2129` | texto, botão primário, linha do gráfico, item selecionado |
-| `--color-fg-muted` | `#5f6673` | rótulos, notas, eixos, barras neutras |
-| `--color-border` | `#e3e6eb` | bordas, divisores de tabela |
-| `--color-ok` | `#1a7f37` | **Saudável** (score ≥ 85), variação boa, economia |
-| `--color-warn` | `#9a6700` | **Atenção** (65 ≤ score < 85) |
-| `--color-bad` | `#c62828` | **Crítica** (score < 65), variação ruim, premissa com nota crítica |
-| `--chart-grid` | `#edf0f3` | linhas de grade |
-| `--chart-axis` / `--chart-muted` | `#c7ccd3` | eixos, séries secundárias |
-| `--chart-reference` | `#8a919c` | linhas de referência |
+| tokens.json | Variável CSS | Valor | Uso |
+|---|---|---|---|
+| `brand.navy` | `--brand-navy` | `#101C3A` | menu lateral |
+| `brand.blue` / `action.primary` | `--brand-blue` / `--action-primary` | `#0645F5` | botão primário, item ativo, seleção, barras |
+| `action.hover` | `--action-hover` | `#0035C7` | hover do primário |
+| `action.focus` | `--action-focus` | `#0645F5` | anel de foco (2 px) |
+| `brand.lilac` | `--brand-lilac` | `#B184F5` | só destaque (selo "em breve" no menu); nunca texto pequeno sobre branco |
+| `surface.canvas` | `--color-bg` | `#F5F7FB` | fundo da página |
+| `surface.card` | `--color-panel` | `#FFFFFF` | cards, cabeçalho |
+| `surface.subtle` | `--color-subtle` | `#EAF0FF` | trilho de barra, hover, bloco de ação sugerida |
+| `text.primary` | `--color-fg` | `#101C3A` | texto |
+| `text.secondary` | `--color-fg-muted` | `#475569` | rótulos, notas |
+| `border.default` | `--color-border` | `#CBD5E1` | bordas |
+| `status.success` / `successBg` | `--color-ok` / `--color-ok-bg` | `#166534` / `#DCFCE7` | Saudável |
+| `status.warning` / `warningBg` | `--color-warn` / `--color-warn-bg` | `#92400E` / `#FEF3C7` | Atenção |
+| `status.danger` / `dangerBg` | `--color-bad` / `--color-bad-bg` | `#B91C1C` / `#FEE2E2` | Crítica |
+| `status.info` / `infoBg` | `--color-info` / `--color-info-bg` | `#1D4ED8` / `#DBEAFE` | informação |
+| `status.neutral` / `neutralBg` | `--color-neutral` / `--color-neutral-bg` | `#475569` / `#E2E8F0` | neutro |
+| `chartColors` | `--chart-1` … `--chart-5` | `#0645F5` `#7251C4` `#087E8B` `#B45309` `#64748B` | séries de gráfico |
 
-Derivados (`color-mix`): `--tint-ok|warn|bad|neutral` (fundo de chip/pílula, 15–18 %),
-`--map-ok|warn|bad|empty` (preenchimento de mapa, 55 % sobre o painel).
-
-As faixas 85/65 vêm do arquivo de premissas (`faixa_saudavel`, `faixa_atencao`) e não devem ser fixadas no código.
-
-Tema escuro: pronto em `:root[data-theme='dark']`, mas o protótipo é só claro.
+Componentes usam os nomes `ok | warn | bad | info` via `data-c` ou `tone` (ver `design-system/tone.ts`).
+O tema escuro do protótipo anterior foi removido: o design system é só claro e não há versão negativa da marca.
 
 ## Tipografia
 
-| Papel | Fonte | Tamanho | Peso |
-|---|---|---|---|
-| Título da página | Serif | 24 px | 400 |
-| Título da perna | Serif | 22 px | 400 |
-| Número de KPI / score | Serif, tabular | 30 px | 400 |
-| Valor em célula de destaque | Serif, tabular | 23 px | 400 |
-| Título de card | Sans | 15 px | 600 |
-| Corpo | Sans | 13 px / 1.45 | 400 |
-| Auxiliar / nota | Sans | 12 px / 11,5 px | 400–600 |
-| Rótulo caixa alta | Sans | 10,5 px, `letter-spacing .4px` | 700 |
+Montserrat (`@fontsource-variable/montserrat`), pesos 400/500/600/700, fallback Arial.
 
-Serif = Source Serif 4; Sans = Inter (substituem Anthropic Serif/Sans do artifact).
+| Papel | Variável | Tamanho / altura |
+|---|---|---|
+| Página | `--fs-page` | 28 / 36 |
+| Seção | `--fs-section` | 20 / 28 (título do cabeçalho e das etapas) |
+| KPI | `--fs-metric` | 32 / 40, peso 700, tabular |
+| Corpo | `--fs-body` | 14 / 22 |
+| Rótulo | `--fs-label` | 14 / 20 |
+| Legenda | `--fs-caption` | 12 / 16 |
 
-## Espaço, raio, sombra
+Valores monetários alinhados à direita e números tabulares (`.num`).
 
-- Espaços: 4 · 8 · 12 · 16 · 20 · 24. Gap entre seções 20 px, entre cards 12 px, padding do card 16 px.
-- Raios: 8 (botão, input, tooltip) · 12 (card, cartão de rota) · 14 (cartão de perna, modal) · 999 (chip, pílula, trilho).
-- Sombras: card `0 1px 3px rgba(16,24,40,.06)`; selecionado/popover `0 6px 18px rgba(16,24,40,.12)`; modal `0 18px 48px rgba(16,24,40,.25)`.
-- Largura máxima do conteúdo: 1180 px.
+## Espaço, raio, layout
+
+- Grade de 4 px: `--space-1` (4) … `--space-10` (64); na maior parte, 8, 12, 16, 24 e 32.
+- Raio: 8 controles · 12 cards · 16 diálogos · 999 chips.
+- Controles com 44 px (`--control-h`): botões, selects, itens do menu.
+- Layout: menu lateral 248 px (`--sidebar-w`), cabeçalho 64 px (`--header-h`), margem 24 px (`--gutter`).
+  Abaixo de 1024 px o menu vira gaveta (botão no cabeçalho); abaixo de 768 px, coluna única e margem 16 px;
+  tabelas com rolagem horizontal.
+- Bordas discretas, sem gradientes decorativos.
+
+## Navegação
+
+| Item do menu | Tela | Estado |
+|---|---|---|
+| Visão geral (`#visao`) | `features/visao/VisaoGeral.tsx`: ocorrências únicas, perdas registradas, taxa por mil operações, score geral, perdas por etapa, ação prioritária, ranking financeiro | pronto |
+| Saúde das rotas (`#perna-<etapa>`) | seletor de etapa + `features/perna/PernaView.tsx` | pronto |
+| Ocorrências | captura do relato → ficha revisável (BACKLOG 10) | "em breve" no menu |
+| Ações | ações sugeridas, validadas e acompanhamento (BACKLOG 6 e 11) | "em breve" no menu |
+| Guia de boas práticas (`#guia`) | `features/guia/Guia.tsx` | pronto |
 
 ## Componentes
 
-| Componente | Arquivo | Onde aparece |
+| Componente | Arquivo | Notas |
 |---|---|---|
-| `Card` | `components/Card.tsx` | toda seção (título + nota + ações à direita) |
-| `Kpi` | `components/Kpi.tsx` | grade de 6 indicadores por perna |
-| `Chip` | `components/Chip.tsx` | situação da rota (CRÍTICA / ATENÇÃO / SAUDÁVEL), id da prática |
-| `Pill` | `components/Chip.tsx` | variação do score (+3 / −2) |
-| `Segmented` | `components/Segmented.tsx` | abas, filtro de situação, filtro do guia |
-| `Button` | `components/Button.tsx` | primário (tinta cheia) e secundário (contorno) |
-| `BarList` | `components/BarList.tsx` | prejuízo por tipo/produto/transportadora |
-| `ScoreGauge` | `components/ScoreGauge.tsx` | meio contagiro do score (cartões de perna, detalhe da rota) |
-| A criar | | `ComboChart` (barras + linha, 2 eixos), `MiniLine` (score 6 meses), `MapaCidade`, `MapaBrasil`, `Modal`, `Tooltip` |
+| `Button` | `components/Button.tsx` | `primary` (azul), `secondary` (borda azul), `tertiary` (texto), `danger` (só exclusão confirmada); `loading` |
+| `Alert` | `components/Alert.tsx` | `ok`, `warn`, `bad`, `info`, `neutral`, sempre com ícone + texto |
+| `Icon` | `components/Icon.tsx` | ícones de traço inline (sem dependência) |
+| `Kpi` | `components/Kpi.tsx` | título, valor, `unit`, nota com período/comparação |
+| `Card` | `components/Card.tsx` | seção com título, nota e ações |
+| `Chip` / `Pill` | `components/Chip.tsx` | situação (texto) e variação |
+| `Segmented` | `components/Segmented.tsx` | filtros; opção ativa em azul |
+| `BarList` | `components/BarList.tsx` | perdas por etapa, padrões de prejuízo |
+| `ScoreGauge` | `components/ScoreGauge.tsx` | meio contagiro do score |
 
-### Padrões visuais recorrentes
+## Acessibilidade
 
-- **Cartão de rota:** borda esquerda de 4 px na cor da situação; `<details>` que expande.
-- **Cartão de perna selecionado:** borda `--color-fg` + anel de 1 px + sombra; o número do passo inverte (fundo escuro).
-- **Célula com borda superior colorida** (3 px) para os indicadores do detalhe da rota.
-- **Skeleton** (`.ds-skeleton`) enquanto carrega; erro em vermelho com texto curto ("Não foi possível carregar…").
-- **Mês parcial** marcado com `*` e barra com opacidade menor.
+- Contraste alvo 4,5:1 para texto comum; o nome "CheckRoute" no menu fica em branco (o azul elétrico sobre o navy
+  não atinge o mínimo).
+- Foco visível (anel azul de 2 px) em tudo que é interativo; link "Pular para o conteúdo".
+- Cor nunca sozinha: situação com texto, alertas com ícone.
+- `prefers-reduced-motion` desliga o skeleton animado e a animação da gaveta.
 
-## Regras de gráfico
+## Decisões abertas (do próprio design system)
 
-- Grade horizontal só nos ticks (4 no eixo principal); sem grade vertical.
-- Eixos: texto 11 px `--color-fg-muted`; R$ em formato compacto (`R$ 12,3 mil`).
-- Linha de referência do score saudável: tracejada `4 4`, `--color-fg-muted`.
-- Linha da série principal: 2–2,25 px, `--color-fg`; pontos coloridos pela situação, com borda do painel e rótulo do valor acima.
-- Barras: `--color-fg-muted`, raio 3, mês parcial mais claro.
-- Todo gráfico com valores tem **tooltip** (`.ds-tip`, 230 px) que fica dentro do card; ativar por coluna inteira (área transparente).
-- `role="img"` + `aria-label` descrevendo o gráfico; elementos clicáveis (zonas do mapa) com `role="button"`, `tabindex=0`, Enter/Espaço.
+- **Faixa de atenção:** o design system propõe 70; o painel continua lendo `faixa_atencao` das premissas da base
+  (hoje 65), sem número fixo no código. Mudar é alterar a premissa, não o front.
+- Versão negativa/vetorial da marca, pesos do score, perfis de acesso e custo real ainda precisam de validação.

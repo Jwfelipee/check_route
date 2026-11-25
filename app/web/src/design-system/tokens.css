@@ -1,81 +1,106 @@
 /*
- * Design tokens · Saúde das rotas
- * Extraídos do artifact original (dash/look "Fundo branco" + CSS da página).
+ * Design tokens · CheckRoute (design system v1.0, Hackathon ETEG 2026)
+ * Fonte: CheckRoute/design técnico/tokens.json. Ver docs/DESIGN_SYSTEM.md.
  * Regra: componente nunca usa cor/medida solta, só var(--…).
  */
 :root {
-  /* ---- Cor: superfícies e texto ---- */
-  --color-bg: #ffffff;
-  --color-panel: #ffffff;
-  --color-fg: #1d2129;
-  --color-fg-muted: #5f6673;
-  --color-border: #e3e6eb;
+  /* ---- Marca ---- */
+  --brand-navy: #101c3a;   /* azul profundo: menu lateral, texto principal */
+  --brand-blue: #0645f5;   /* azul elétrico: ação primária, foco, seleção */
+  --brand-lilac: #b184f5;  /* lilás: só destaque, nunca texto pequeno */
+  --brand-white: #ffffff;
 
-  /* ---- Cor: situação (semântica, usada em score, chips, barras e mapas) ---- */
-  --color-ok: #1a7f37;     /* Saudável  (score >= 85) */
-  --color-warn: #9a6700;   /* Atenção   (65 <= score < 85) */
-  --color-bad: #c62828;    /* Crítica   (score < 65) */
+  /* ---- Superfícies e texto ---- */
+  --color-bg: #f5f7fb;        /* surface.canvas */
+  --color-panel: #ffffff;     /* surface.card */
+  --color-subtle: #eaf0ff;    /* surface.subtle: trilhos, hover, item ativo claro */
+  --color-fg: #101c3a;        /* text.primary */
+  --color-fg-muted: #475569;  /* text.secondary */
+  --color-border: #cbd5e1;    /* border.default */
 
-  /* ---- Cor: gráficos ---- */
-  --chart-grid: #edf0f3;
-  --chart-axis: #c7ccd3;
-  --chart-reference: #8a919c;
-  --chart-muted: #c7ccd3;
+  /* ---- Ação ---- */
+  --action-primary: #0645f5;
+  --action-hover: #0035c7;
+  --action-focus: #0645f5;
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--action-focus) 35%, transparent);
 
-  /* Fundos derivados (chips, pílulas, mapas): mistura da cor com transparente */
-  --tint-ok: color-mix(in srgb, var(--color-ok) 15%, transparent);
-  --tint-warn: color-mix(in srgb, var(--color-warn) 18%, transparent);
-  --tint-bad: color-mix(in srgb, var(--color-bad) 15%, transparent);
-  --tint-neutral: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  /* ---- Situação (status.*) ----
+     ok = Saudável, warn = Atenção, bad = Crítica. Sempre com texto junto, nunca só cor. */
+  --color-ok: #166534;
+  --color-ok-bg: #dcfce7;
+  --color-warn: #92400e;
+  --color-warn-bg: #fef3c7;
+  --color-bad: #b91c1c;
+  --color-bad-bg: #fee2e2;
+  --color-info: #1d4ed8;
+  --color-info-bg: #dbeafe;
+  --color-neutral: #475569;
+  --color-neutral-bg: #e2e8f0;
+
+  /* Fundos de chip/pílula (nomes antigos mantidos para os componentes existentes) */
+  --tint-ok: var(--color-ok-bg);
+  --tint-warn: var(--color-warn-bg);
+  --tint-bad: var(--color-bad-bg);
+  --tint-info: var(--color-info-bg);
+  --tint-neutral: var(--color-neutral-bg);
   --map-ok: color-mix(in srgb, var(--color-ok) 55%, var(--color-panel));
   --map-warn: color-mix(in srgb, var(--color-warn) 55%, var(--color-panel));
   --map-bad: color-mix(in srgb, var(--color-bad) 55%, var(--color-panel));
-  --map-empty: color-mix(in srgb, var(--color-fg) 8%, var(--color-panel));
+  --map-empty: var(--color-neutral-bg);
 
-  /* ---- Tipografia ----
-     O artifact usa Anthropic Sans/Serif (não distribuíveis). Substitutos abertos:
-     Inter (texto/UI) e Source Serif 4 (números grandes e títulos). */
-  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-serif: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
+  /* ---- Gráficos (chartColors) ---- */
+  --chart-1: #0645f5;
+  --chart-2: #7251c4;
+  --chart-3: #087e8b;
+  --chart-4: #b45309;
+  --chart-5: #64748b;
+  --chart-grid: #e2e8f0;
+  --chart-axis: #cbd5e1;
+  --chart-reference: #64748b;
+  --chart-muted: #cbd5e1;
 
-  --fs-caption: 10.5px;   /* rótulos em CAIXA ALTA, cabeçalhos de tabela */
-  --fs-xs: 11.5px;        /* notas de KPI, legendas */
-  --fs-sm: 12px;          /* texto auxiliar */
-  --fs-base: 13px;        /* corpo */
-  --fs-md: 15px;          /* títulos de card, lede */
-  --fs-lg: 16px;          /* nome de rota/perna */
-  --fs-h2: 22px;          /* título de seção de perna (serif) */
-  --fs-h1: 24px;          /* título da página (serif) */
-  --fs-kpi: 30px;         /* número de KPI (serif, tabular) */
+  /* ---- Tipografia: Montserrat 400/500/600/700, fallback Arial ---- */
+  --font-sans: 'Montserrat Variable', Montserrat, Arial, sans-serif;
+  --fs-caption: 12px;  --lh-caption: 16px;   /* legenda */
+  --fs-body: 14px;     --lh-body: 22px;      /* corpo */
+  --fs-label: 14px;    --lh-label: 20px;     /* rótulo */
+  --fs-section: 20px;  --lh-section: 28px;   /* título de seção */
+  --fs-page: 28px;     --lh-page: 36px;      /* título da página */
+  --fs-metric: 32px;   --lh-metric: 40px;    /* KPI */
+  /* Aliases usados pelos componentes existentes */
+  --fs-xs: var(--fs-caption);
+  --fs-sm: 13px;
+  --fs-base: var(--fs-body);
+  --fs-md: 16px;
+  --fs-lg: 16px;
+  --fs-h2: var(--fs-section);
+  --fs-h1: var(--fs-page);
+  --fs-kpi: var(--fs-metric);
 
-  /* ---- Espaço, raio, sombra ---- */
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
-  --gap-md: 12px;
-  --gap-lg: 20px;
+  /* ---- Espaço (grade de 4 px) ---- */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-7: 32px; --space-8: 40px; --space-9: 48px; --space-10: 64px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
   --pad-card: 16px;
+
+  /* ---- Raio: controle 8, card 12, diálogo 16 ---- */
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 14px;
+  --radius-lg: 12px;
+  --radius-modal: 16px;
   --radius-pill: 999px;
-  --shadow-card: 0 1px 3px rgba(16, 24, 40, .06);
-  --shadow-pop: 0 6px 18px rgba(16, 24, 40, .12);
-  --shadow-modal: 0 18px 48px rgba(16, 24, 40, .25);
 
-  --content-max: 1180px;
+  /* Bordas discretas, sem gradientes decorativos */
+  --shadow-card: 0 1px 2px rgba(16, 28, 58, .05);
+  --shadow-pop: 0 8px 24px rgba(16, 28, 58, .12);
+  --shadow-modal: 0 18px 48px rgba(16, 28, 58, .24);
+
+  /* ---- Layout ---- */
+  --sidebar-w: 248px;
+  --header-h: 64px;
+  --gutter: 24px;
+  --control-h: 44px;
+  --content-max: 1280px;
   color-scheme: light;
-}
-
-/* Tema escuro opcional (o protótipo é só claro; deixado pronto para quem quiser). */
-:root[data-theme='dark'] {
-  --color-bg: #15171c;
-  --color-panel: #1c1f26;
-  --color-fg: #e8eaee;
-  --color-fg-muted: #9aa1ad;
-  --color-border: #2c313a;
-  --color-ok: #3fb950;
-  --color-warn: #d29922;
-  --color-bad: #f85149;
-  --chart-grid: #262a32;
-  --chart-axis: #3a404b;
-  color-scheme: dark;
 }

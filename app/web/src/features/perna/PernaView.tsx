@@ -66,7 +66,7 @@ export function PernaView({ perna }: { perna: Perna }) {
       )}
 
       <div className="ds-kpis">
-        <Kpi id={`kpi-score-${perna}`} loading={isLoading} label={`Score médio da ${cfg.titulo.toLowerCase()}`} value={fmt.int(k?.score)} tone={tomDoScore(k?.score, f)}
+        <Kpi id={`kpi-score-${perna}`} loading={isLoading} label={`Score médio da ${cfg.titulo.toLowerCase()}`} value={fmt.int(k?.score)} unit="/100" tone={tomDoScore(k?.score, f)}
           note={<>{variacao(k?.delta_score, fmt.sint)} pontos sobre o mês anterior · saudável a partir de <span>{f.ok}</span></>} />
         <Kpi id={`kpi-prazo-${perna}`} loading={isLoading} label={cfg.kpiPrazo} value={fmt.pct1(k?.pct_prazo as number)}
           note={<>{variacao(k?.delta_pct_prazo as number, fmt.spp)} sobre o mês anterior · meta <span>{fmt.pct(meta('pct_prazo'))}</span></>} />
@@ -74,7 +74,7 @@ export function PernaView({ perna }: { perna: Perna }) {
           note={<>{variacao(k?.['delta_' + cfg.kpiChave.campo] as number, fmt.spp)} sobre o mês anterior · meta <span>{fmt.pct(meta(cfg.kpiChave.campo))}</span></>} />
         <Kpi id={`kpi-prejuizo-${perna}`} loading={isLoading} label="Prejuízo com ocorrências no mês" value={fmt.brlk(k?.prejuizo)}
           note={<><span>{fmt.int(k?.ocorrencias)}</span> ocorrências, <span>{fmt.int(k?.abertas)}</span> ainda em aberto</>} />
-        <Kpi id={`kpi-economia-${perna}`} loading={isLoading} label="Economia possível no mês" value={fmt.brlk(k?.economia)} tone="ok" note={cfg.economiaNota} />
+        <Kpi id={`kpi-economia-${perna}`} loading={isLoading} label="Economia estimada no mês" value={fmt.brlk(k?.economia)} note={<>{cfg.economiaNota}. Estimativa, não economia comprovada.</>} />
         <div className="ds-kpi" id={'mapa-' + perna}>
           <div className="ds-kpi-l">{cfg.temMapaCidade ? 'Score por zona da cidade' : 'Score por região do hub'}</div>
           <div className="sr-todo">A fazer: {cfg.temMapaCidade ? 'MapaCidade' : 'MapaBrasil'} (D3 + public/data/mapa.json). Clique filtra {cfg.temMapaCidade ? 'a zona' : 'a região'}. Ver docs/TELAS.md §3.4.</div>
@@ -91,17 +91,17 @@ export function PernaView({ perna }: { perna: Perna }) {
                 <div className="sr-rt">
                   <b>{r.rota}</b>
                   <Chip tone={tomDaSituacao(r.situacao)}>{r.situacao}</Chip>
-                  <span className="ds-muted" style={{ fontSize: 12 }}>{r.transportadora}</span>
-                  <span className="sr-rpre">Score {fmt.int(r.score)} <Pill tone={tomDaVariacao(r.delta_score)}>{fmt.sint(r.delta_score)}</Pill></span>
+                  <span className="ds-muted" style={{ fontSize: 13 }}>{r.transportadora}</span>
+                  <span className="sr-rpre">Score {fmt.int(r.score)}/100 <Pill tone={tomDaVariacao(r.delta_score)}>{fmt.sint(r.delta_score)}</Pill></span>
                 </div>
-                <div className="ds-muted" style={{ fontSize: 12 }}>
+                <div className="ds-muted" style={{ fontSize: 13 }}>
                   {fmt.int(r.unidades)} {cfg.unidade[1]} · prejuízo {fmt.brl(r.prejuizo)} em {r.ocorrencias} ocorrências · mais tira pontos: <b>{r.foco ?? '—'}</b>
                 </div>
               </summary>
               <div className="sr-acao">
-                <b>Ação sugerida</b>
+                <b>Ação sugerida · aguardando validação</b>
                 <span>{r.acao}</span>
-                {r.pratica_id && <div className="ds-muted" style={{ fontSize: 12, marginTop: 4 }}>Boa prática {r.pratica_id}: {r.pratica}</div>}
+                {r.pratica_id && <div className="ds-muted" style={{ fontSize: 13, marginTop: 4 }}>Fonte: guia de boas práticas, {r.pratica_id} · {r.pratica}</div>}
               </div>
               <div className="sr-todo" style={{ marginTop: 10 }}>A fazer no detalhe: contagiro + barras das 5 premissas, mini gráfico do score (6 meses), ocorrências por tipo da rota e botão "Validar e acompanhar". Ver docs/TELAS.md §3.5.</div>
             </details>
@@ -118,7 +118,7 @@ export function PernaView({ perna }: { perna: Perna }) {
         {combo && <p style={{ margin: '0 0 14px', fontSize: 14 }}><b>{fmt.pct(combo.share_custo)}</b> do prejuízo da {cfg.titulo.toLowerCase()} no mês vem de <b>{combo.valor}</b>.</p>}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
           {(['tipo', 'produto', 'transportadora'] as const).map((dim) => (
-            <div key={dim} style={{ border: '1px dashed var(--color-border)', borderRadius: 12, padding: '10px 12px', minWidth: 0 }}>
+            <div key={dim} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3) var(--space-4)', minWidth: 0 }}>
               <div className="ds-caption">Por {dim === 'tipo' ? 'tipo de ocorrência' : dim}</div>
               <BarList items={padroes(dim).map((p) => ({ key: p.valor, label: p.valor, value: p.custo, display: fmt.brlk(p.custo), detail: `${p.ocorrencias} ocorr. · ${fmt.pct(p.share_custo)}`, tone: tomShare(p.share_custo) }))} />
             </div>
@@ -132,7 +132,7 @@ export function PernaView({ perna }: { perna: Perna }) {
             <thead><tr>
               <th>Rota</th><th>Transportadora</th><th className="num">Score</th>
               {cfg.ranking.map((c) => <th key={c.campo} className="num">{c.label}</th>)}
-              <th className="num">Prejuízo</th><th className="num">Economia possível</th><th>Situação</th>
+              <th className="num">Prejuízo</th><th className="num">Economia estimada</th><th>Situação</th>
             </tr></thead>
             <tbody>
               {(data?.saudeRotas ?? []).filter((r) => r.perna === perna && passaFiltro(r, filtros)).map((r) => (
@@ -157,7 +157,7 @@ export function PernaView({ perna }: { perna: Perna }) {
       </Card>
 
       <details className="ds-card" id={'premissas-' + perna}>
-        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Como o score da {cfg.titulo.toLowerCase()} é calculado</summary>
+        <summary style={{ cursor: 'pointer', fontWeight: 600, minHeight: 24 }}>Como o score da {cfg.titulo.toLowerCase()} é calculado</summary>
         <p className="ds-note">Cada premissa vira uma nota de 0 a 100 numa régua linear: nota 0 no valor ruim, nota 100 na meta. O score é a média das notas ponderada pelos pesos. Rota saudável a partir de <b>{f.ok}</b>, em atenção a partir de <b>{f.atencao}</b>, crítica abaixo disso.</p>
         <div className="ds-table-box">
           <table className="ds-table">

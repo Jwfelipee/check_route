@@ -90,6 +90,7 @@ reference/  artifact original, só para consulta
 | Cabeçalho, abas, resumo, seletor de pernas com contagiro | ✅ |
 | Por perna: filtros, 5 KPIs, lista de rotas com ação sugerida, padrões de prejuízo, ranking, premissas | ✅ (versão inicial) |
 | Aba Guia de boas práticas | ✅ |
+| Identidade CheckRoute (design system v1.0): menu lateral, Visão geral, tokens, Montserrat | ✅ [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) |
 | API com o contrato, ações persistidas e ETL da bronze (gold idêntico aos JSON) | ✅ `app/api` |
 | IA: relato → ficha, ação sugerida do guia, registro de custo, eval com gabarito | ✅ `app/api` (falta a tela no front) |
 | Mapas (zona da cidade / região do Brasil), gráfico mês a mês, detalhe completo da rota, ações em acompanhamento + modal | ⏳ ver [docs/BACKLOG.md](docs/BACKLOG.md) |
