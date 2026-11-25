@@ -55,6 +55,10 @@ export const OcorrenciaSchema = z.object({
   status: z.string(), // 'Aberta' | 'Resolvida'
   dias_resolucao: z.number().nullable(),
   dias_em_aberto: z.number().nullable(),
+  // Rastreabilidade (opcionais): protocolo do SAC, canal e a ficha das ocorrências registradas pelo relato.
+  protocolo: z.string().optional(),
+  canal: z.string().optional(),
+  detalhes: z.record(z.string(), z.unknown()).optional(),
 });
 export type Ocorrencia = z.infer<typeof OcorrenciaSchema>;
 
@@ -90,7 +94,7 @@ export type Pratica = z.infer<typeof PraticaSchema>;
 export const ReferenciaSchema = z.object({ data: z.string(), mes: z.string(), mes_anterior: z.string() });
 export type Referencia = z.infer<typeof ReferenciaSchema>;
 
-export type AcaoStatus = 'Em acompanhamento' | 'Concluída' | 'Cancelada';
+export type AcaoStatus = 'Em acompanhamento' | 'Concluída' | 'Cancelada' | 'Descartada';
 export interface Acao {
   id: string;
   rota_id: string;
@@ -108,6 +112,9 @@ export interface Acao {
   pratica_id: string | null;
   concluida_em?: string;
   cancelada_em?: string;
+  descartada_em?: string;
+  /** De onde veio o texto da ação: regra do guia ou IA. */
+  origem_sugestao?: 'regra' | 'ia';
 }
 
 export interface Fontes {

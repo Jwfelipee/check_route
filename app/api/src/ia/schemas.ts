@@ -62,6 +62,10 @@ export const FichaConfirmada = FichaIa.omit({ pergunta_ao_motorista: true }).ext
   produto: z.enum(PRODUTOS),
   custo_estimado: z.number().nonnegative(),
   relato: z.string().optional(),
+  /** Por onde a ocorrência chegou: app de WhatsApp ou formulário do painel (SAC). */
+  canal: z.enum(['whatsapp', 'formulario']).default('formulario'),
+  /** Só a indicação de que o relato veio com foto (a imagem não é guardada). */
+  com_foto: z.boolean().optional(),
 });
 export type FichaConfirmada = z.infer<typeof FichaConfirmada>;
 

@@ -10,6 +10,10 @@ import { PERNAS } from './types';
 export const NOME_PERNA: Record<Perna, string> = { coleta: 'Coleta', transferencia: 'Transferência', entrega: 'Entrega' };
 export const NOME_REGIAO: Record<string, string> = { N: 'Norte', NE: 'Nordeste', CO: 'Centro-Oeste', SE: 'Sudeste', S: 'Sul' };
 
+/** Tipos de ocorrência que são acidente na estrada (taxa por mil viagens). */
+export const TIPOS_ACIDENTE = ['Colisão', 'Tombamento', 'Saída de pista', 'Avaria por frenagem'];
+export const ehAcidente = (tipo: string) => TIPOS_ACIDENTE.includes(tipo);
+
 export function faixas(premissas: Premissa[]) {
   const par = (k: string, d: number) => premissas.find((x) => x.chave === k)?.valor ?? d;
   return { ok: par('faixa_saudavel', 85), atencao: par('faixa_atencao', 65) };
@@ -44,6 +48,8 @@ export interface RotaMes {
   pct_prazo: number | null; pct_primeira: number | null; ocorr_100: number | null; custo_vs_orcado: number | null;
   resolucao_dias: number | null; horas_ate_cd: number | null; ocupacao: number | null; horas_crossdock: number | null;
   score: number | null; situacao: Situacao | null; economia: number; economia_vazio: number;
+  /** Acidentes na estrada no mês e a taxa por mil operações (viagens, na transferência). */
+  acidentes: number; acidentes_mil: number | null;
   [nota: `nota_${string}`]: number | null;
 }
 
@@ -77,6 +83,8 @@ export function calcRotaMes({ rotas, operacao_mes, ocorrencias, premissas }: Fon
       mes: e.mes, perna: r.perna, regiao: r.regiao, uf: r.uf, cidade: r.cidade, zona: r.zona, rota_id: e.rota_id, rota: r.rota,
       origem: r.origem, destino: r.destino, transportadora: r.transportadora, km: r.km,
       unidades: n, ocorrencias: os.length, abertas: os.filter((o) => o.status === 'Aberta').length,
+      acidentes: os.filter((o) => ehAcidente(o.tipo)).length,
+      acidentes_mil: n ? (os.filter((o) => ehAcidente(o.tipo)).length / n) * 1000 : null,
       frete_unidade: n ? e.frete_total / n : null, frete_orcado: r.frete_orcado, prejuizo,
       ...v,
     } as RotaMes;

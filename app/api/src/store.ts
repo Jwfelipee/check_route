@@ -96,6 +96,13 @@ export const store = {
     return desde ? todas.filter((o) => o.mes >= desde) : todas;
   },
 
+  /** Últimas ocorrências registradas pelo relato (com a ficha e o relato mascarado em `detalhes`). */
+  async ocorrenciasRecentes(limite: number): Promise<Ocorrencia[]> {
+    return (
+      await sql<{ dados: Ocorrencia }>('SELECT dados FROM ocorrencias_novas ORDER BY criada_em DESC LIMIT $1', [limite])
+    ).map((r) => r.dados);
+  },
+
   async criarOcorrencia(o: Ocorrencia): Promise<Ocorrencia> {
     await sql('INSERT INTO ocorrencias_novas (id, dados) VALUES ($1, $2)', [o.id, o]);
     return o;

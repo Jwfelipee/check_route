@@ -9,6 +9,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod/v4';
 import { sql } from '../db.js';
 import { ia } from '../ia/index.js';
+import { ocorrenciasDaRota } from '../ia/ferramentas.js';
 import {
   CAMPOS_OBRIGATORIOS,
   FichaConfirmada,
@@ -17,6 +18,8 @@ import {
   TIPOS_ACIDENTE,
   type FichaIa,
 } from '../ia/schemas.js';
+import { detectarInstrucao, neutralizarDelimitadores, revisarSaida } from '../guardas.js';
+import { mascarar, mascararCampos, mascararPlaca, type TipoDado } from '../privacidade.js';
 import { store } from '../store.js';
 import type { Ocorrencia } from '../types.js';
 
@@ -32,10 +35,15 @@ export async function rotasIa(app: FastifyInstance) {
     const p = PedidoExtracao.safeParse(req.body);
     if (!p.success) return reply.code(400).send({ erro: 'Pedido inválido', detalhes: z.flattenError(p.error) });
 
+    // Privacidade e guardas ANTES do modelo: ele não recebe dado pessoal e o relato não fecha a tag <relato>.
+    const privado = mascarar(p.data.relato);
+    const guardas = detectarInstrucao(p.data.relato);
+    const relatoSeguro = neutralizarDelimitadores(privado.texto);
+
     const rotas = await store.rotas();
     const { dados: ficha, meta } = await ia.extrairFicha({
       rotas,
-      relato: p.data.relato,
+      relato: relatoSeguro,
       dataReferencia: new Date().toISOString().slice(0, 10),
       imagem: p.data.imagemBase64
         ? { base64: p.data.imagemBase64.replace(/^data:[^,]+,/, ''), tipo: p.data.imagemTipo ?? 'image/jpeg' }
@@ -44,16 +52,29 @@ export async function rotasIa(app: FastifyInstance) {
 
     // Regras do código, não do modelo: rota precisa existir; obrigatórios decidem se a ficha está completa.
     const idsTransferencia = new Set(rotas.filter((r) => r.perna === 'transferencia').map((r) => r.rota_id));
-    const f: FichaIa = { ...ficha };
+    const f: FichaIa = { ...ficha, placa: mascararPlaca(ficha.placa) };
     if (!f.rota_id && p.data.rota_id) f.rota_id = p.data.rota_id;
     if (f.rota_id && !idsTransferencia.has(f.rota_id)) f.rota_id = null;
+    // A foto também pode trazer dado pessoal: o texto que o modelo devolve passa de novo pela máscara.
+    const saida = mascararCampos(f, ['resumo', 'trecho', 'embalagem', 'condicao_via_clima', 'tipo_veiculo']);
 
-    const faltando = CAMPOS_OBRIGATORIOS.filter((c) => f[c] === null || f[c] === '');
+    const faltando = CAMPOS_OBRIGATORIOS.filter((c) => saida.obj[c] === null || saida.obj[c] === '');
     const pergunta = faltando.length
-      ? (f.pergunta_ao_motorista ?? `Para registrar, preciso saber: ${faltando.map((c) => NOMES_CAMPO[c]).join('; ')}.`)
+      ? (saida.obj.pergunta_ao_motorista ?? `Para registrar, preciso saber: ${faltando.map((c) => NOMES_CAMPO[c]).join('; ')}.`)
       : null;
 
-    return { ok: faltando.length === 0, ficha: { ...f, pergunta_ao_motorista: pergunta }, faltando, pergunta, meta };
+    return {
+      ok: faltando.length === 0,
+      ficha: { ...saida.obj, pergunta_ao_motorista: pergunta },
+      faltando,
+      pergunta,
+      // Campos que a pessoa precisa olhar com atenção antes de confirmar (ex.: custo implausível).
+      revisar: revisarSaida(saida.obj),
+      relato_mascarado: privado.texto,
+      privacidade: { mascarados: unir(privado.mascarados, saida.mascarados) },
+      guardas,
+      meta: { ...meta, processado_em: new Date().toISOString() },
+    };
   });
 
   app.post('/ocorrencias', async (req, reply) => {
@@ -66,7 +87,15 @@ export async function rotasIa(app: FastifyInstance) {
     const data = f.data_hora.slice(0, 10);
     const ref = (await store.referencia()).data;
     const diasAberto = Math.max(0, Math.round((Date.parse(ref) - Date.parse(data)) / 86_400_000));
-    const { relato, ...detalhes } = f;
+
+    // Nada entra no banco sem máscara: relato e campos livres de novo (defesa em profundidade,
+    // vale para o WhatsApp, que anexa telefone e nome ao relato) e placa só como pseudônimo.
+    const { relato, canal, com_foto, ...campos } = f;
+    const privRelato = relato ? mascarar(relato) : { texto: undefined, mascarados: [] as TipoDado[] };
+    const privCampos = mascararCampos({ ...campos, placa: mascararPlaca(campos.placa) }, [
+      'resumo', 'trecho', 'embalagem', 'condicao_via_clima', 'tipo_veiculo',
+    ]);
+    const guardas = relato ? detectarInstrucao(relato) : { instrucao_suspeita: false, motivos: [] };
 
     const oc: Ocorrencia = {
       id: `OC-IA-${Date.now()}`,
@@ -82,9 +111,25 @@ export async function rotasIa(app: FastifyInstance) {
       status: 'Aberta',
       dias_resolucao: null,
       dias_em_aberto: diasAberto,
-      detalhes: { ...detalhes, relato, acidente: TIPOS_ACIDENTE.includes(f.tipo), origem: 'relato + IA, confirmado por pessoa' },
+      canal,
+      detalhes: {
+        ...privCampos.obj,
+        relato: privRelato.texto,
+        com_foto: Boolean(com_foto),
+        acidente: TIPOS_ACIDENTE.includes(f.tipo),
+        origem: 'relato + IA, confirmado por pessoa',
+        registrada_em: new Date().toISOString(),
+        privacidade: { mascarados: unir(privRelato.mascarados, privCampos.mascarados) },
+        guardas,
+      },
     };
     return reply.code(201).send(await store.criarOcorrencia(oc));
+  });
+
+  /** Ocorrências registradas pelo relato (WhatsApp ou formulário), mais novas primeiro, com relato × ficha. */
+  app.get<{ Querystring: { limite?: string } }>('/ocorrencias/recentes', async (req) => {
+    const limite = Math.min(200, Math.max(1, Number(req.query.limite) || 50));
+    return store.ocorrenciasRecentes(limite);
   });
 
   app.post('/acoes/sugerir', async (req, reply) => {
@@ -96,7 +141,6 @@ export async function rotasIa(app: FastifyInstance) {
 
     const { dados, meta } = await ia.sugerirAcao({
       rota,
-      praticas,
       numeros: p.data.numeros,
       foco: p.data.foco,
       tipoMaisCaro: p.data.tipo_mais_caro,
@@ -109,7 +153,8 @@ export async function rotasIa(app: FastifyInstance) {
     return {
       ...dados,
       pratica: { id: pratica.id, titulo: pratica.titulo, prazo_dias: pratica.prazo_dias, esforco: pratica.esforco },
-      numeros_fora: numerosFora(dados.acao, p.data.numeros),
+      // Números que vieram do código: os do front e os que as ferramentas devolveram à IA.
+      numeros_fora: numerosFora(dados.acao, [p.data.numeros, await ocorrenciasDaRota(rota.rota_id), { km: rota.km }]),
       meta,
     };
   });
@@ -128,15 +173,29 @@ export async function rotasIa(app: FastifyInstance) {
 }
 
 /**
- * Confere se cada número citado no texto veio do código (controle "a IA não inventa números").
+ * Confere se cada número citado no texto veio do código (controle "a IA não inventa números"):
+ * dos números enviados pelo front ou das ferramentas que a IA consultou.
  * Compara só os dígitos, para aceitar formatos como "12,5%" ou "R$ 1.234".
  */
-function numerosFora(texto: string, numeros: Record<string, unknown>): string[] {
+function numerosFora(texto: string, fontes: unknown[]): string[] {
   const digitos = (s: string) => s.replace(/\D/g, '').replace(/^0+/, '');
-  const conhecidos = new Set(Object.values(numeros).filter((v) => v !== null).map((v) => digitos(String(v))));
+  const conhecidos = new Set<string>();
+  const coleta = (v: unknown): void => {
+    if (v == null) return;
+    if (typeof v === 'number') {
+      // Aceita o valor como veio e as formas arredondadas que a IA costuma citar (inteiro, 1 casa).
+      [v, Math.round(v), Math.round(v * 10) / 10].forEach((n) => conhecidos.add(digitos(String(n))));
+    } else if (typeof v === 'string') {
+      (v.match(/\d[\d.,]*/g) ?? []).forEach((n) => conhecidos.add(digitos(n)));
+    } else if (Array.isArray(v)) v.forEach(coleta);
+    else if (typeof v === 'object') Object.values(v as Record<string, unknown>).forEach(coleta);
+  };
+  fontes.forEach(coleta);
   const citados = texto.match(/\d[\d.,]*/g) ?? [];
   return citados.filter((n) => {
     const d = digitos(n);
     return d.length > 0 && !conhecidos.has(d);
   });
 }
+
+const unir = (...listas: TipoDado[][]) => [...new Set(listas.flat())];

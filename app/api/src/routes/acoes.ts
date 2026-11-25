@@ -12,9 +12,11 @@ const NovaAcao = z.object({
   acao: z.string().min(1),
   acao_sugerida: z.string(),
   foco: z.string().nullable(),
-  responsavel: z.string().min(1),
-  prazo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  status: z.literal('Em acompanhamento').default('Em acompanhamento'),
+  responsavel: z.string(),
+  prazo: z.string(),
+  // Descartada: a sugestão recusada também fica registrada (quem recusou e quando).
+  status: z.enum(['Em acompanhamento', 'Descartada']).default('Em acompanhamento'),
+  origem_sugestao: z.enum(['regra', 'ia']).optional(),
   score_inicial: z.number().nullable(),
   validada_em: z.string(),
   validada_por: z.string().nullable(),
@@ -29,6 +31,13 @@ export async function rotasAcoes(app: FastifyInstance) {
   app.post('/acoes', async (req, reply) => {
     const r = NovaAcao.safeParse(req.body);
     if (!r.success) return reply.code(400).send({ erro: 'Ação inválida', detalhes: z.flattenError(r.error) });
+    // Validar exige responsável e prazo (regra do design system); descartar não.
+    if (r.data.status === 'Em acompanhamento' && (!r.data.responsavel.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(r.data.prazo))) {
+      return reply.code(400).send({ erro: 'Para validar, informe o responsável e o prazo (AAAA-MM-DD).' });
+    }
+    if (r.data.status === 'Descartada') {
+      return reply.code(201).send(await store.criarAcao({ ...r.data, descartada_em: new Date().toISOString().slice(0, 10) }));
+    }
     return reply.code(201).send(await store.criarAcao(r.data));
   });
 

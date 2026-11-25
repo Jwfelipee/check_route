@@ -11,7 +11,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "etl": "tsx src/etl/run.ts",
     "etl:check": "tsx src/etl/check.ts",
-    "eval": "tsx scripts/eval.ts"
+    "eval": "tsx scripts/eval.ts",
+    "test": "tsx --test test/*.test.ts",
+    "seguranca": "tsx scripts/seguranca.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",

@@ -46,7 +46,9 @@ export interface Ocorrencia {
   status: string;
   dias_resolucao: number | null;
   dias_em_aberto: number | null;
-  /** Campos extras da ficha do acidente (só nas ocorrências criadas pela IA). O front ignora. */
+  /** Por onde chegou (ocorrências do relato: whatsapp | formulario; da bronze: canal do SAC). */
+  canal?: string;
+  /** Campos extras da ficha do acidente (só nas ocorrências criadas pela IA). */
   detalhes?: Record<string, unknown>;
 }
 
@@ -83,7 +85,7 @@ export interface Referencia {
   mes_anterior: string;
 }
 
-export type AcaoStatus = 'Em acompanhamento' | 'Concluída' | 'Cancelada';
+export type AcaoStatus = 'Em acompanhamento' | 'Concluída' | 'Cancelada' | 'Descartada';
 export interface Acao {
   id: string;
   rota_id: string;
@@ -101,6 +103,9 @@ export interface Acao {
   pratica_id: string | null;
   concluida_em?: string;
   cancelada_em?: string;
+  descartada_em?: string;
+  /** De onde veio o texto da ação: regra do guia ou IA (com as ferramentas que ela consultou). */
+  origem_sugestao?: 'regra' | 'ia';
 }
 
 export interface Fontes {

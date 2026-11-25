@@ -27,6 +27,7 @@ export const api = {
       relato,
       ...(imagem ? { imagemBase64: imagem.base64, imagemTipo: imagem.mime } : {}),
     }),
-  registrar: (ficha: Record<string, unknown>) => chamar<{ id: string }>('POST', '/ocorrencias', ficha),
+  // canal: a API grava de onde veio a ocorrência (e mascara telefone/nome que vierem no relato).
+  registrar: (ficha: Record<string, unknown>) => chamar<{ id: string }>('POST', '/ocorrencias', { ...ficha, canal: 'whatsapp' }),
   hubs: async () => (await chamar<Rota[]>('GET', '/rotas')).filter((r) => r.perna === 'transferencia'),
 };

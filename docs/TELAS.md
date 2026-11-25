@@ -43,20 +43,20 @@ As três pernas têm a mesma estrutura; o que muda está em `app/web/src/feature
 
 Variação: verde quando melhora, vermelho quando piora.
 
-### 3.4 Mapa (⏳)
+### 3.4 Mapa
 - **MapaCidade** (coleta, entrega): `mapa.json → cidades[UF].zonas[zona].d`, viewBox 400×400. Cada zona pintada com `--map-ok|warn|bad` pelo score da rota da zona (`zonas`), ou `--map-empty` sem rota. Clique/Enter alterna o filtro de zona; a escolhida tem borda 4 px escura e as outras ficam com opacidade 0,4. Tooltip: "São Paulo · zona Norte · Atenção / Score 72 · 1.234 coletas no mês / 18 ocorrências · prejuízo R$ 9.870". Código de referência: `reference/artifact/sr_view.js`, `dash.draw('mapacidade')`.
 - **MapaBrasil** (transferência): `mapa.json → regioes[N|NE|CO|SE|S].d`, mesma lógica com `regioes` e o rótulo da região + score no centro. Referência: `dash.draw('mapa')`.
 
 ### 3.5 Rotas `#rotas-coleta`
 Card com `Segmented` (Todas / Críticas / Atenção / Saudáveis). Lista de `<details>`, piores primeiro:
 - **Resumo:** nome da rota, chip da situação, transportadora, score + pílula da variação, prejuízo.
-- **Detalhe (⏳ completar):**
+- **Detalhe** (`features/perna/RotaDetalhe.tsx`):
   1. Bloco "hero": `ScoreGauge` da rota com score, mês anterior e variação; barras das 5 premissas (nota 0–100, cor pela nota, valor do indicador ao lado); células com os indicadores-chave (borda superior colorida).
   2. Mini gráfico de linha do score nos 6 meses (`rotaMes` da rota), com linha tracejada do score saudável.
-  3. Ocorrências do mês da rota por tipo (`padroes` com `dim = rota_tipo`).
+  3. Ocorrências do mês da rota por tipo (`padroes` com `dim = rota_tipo`) e **acidentes por mil viagens** (célula própria na transferência).
   4. **Ação sugerida** (texto do guia, id e título da prática, link para o guia) e botão **Validar e acompanhar**. Se já houver ação em acompanhamento, mostrar responsável, prazo (vermelho se atrasada), score na validação → hoje, e os botões "Marcar como concluída" / "Cancelar acompanhamento".
 
-### 3.6 Ações em acompanhamento `#acoes-coleta` (⏳)
+### 3.6 Ações em acompanhamento `#acoes-coleta`
 Tabela: Rota · Ação · Responsável · Prazo · Validada em · Score na validação · Score hoje · Situação.
 Fonte: `acoesRepo.listar()` filtrado pela perna. Vazio: "Nenhuma ação validada ainda…".
 
@@ -72,7 +72,7 @@ Três `BarList`: por tipo de ocorrência, por produto, por transportadora. Barra
 Tabela do pior score para o melhor: Rota, Transportadora, Score, as 5 premissas da perna, Prejuízo, Economia possível, Situação.
 Premissa com nota abaixo da faixa de atenção em vermelho.
 
-### 3.9 Mês a mês `#mes-coleta` (⏳)
+### 3.9 Mês a mês `#mes-coleta`
 `ComboChart`: barras = prejuízo (eixo esquerdo, R$ compacto), linha = score médio ponderado (eixo direito 0–100), linha tracejada no score saudável, mês atual com `*`.
 Altura 250, margens `{t:22, r:40, b:26, l:62}`. Tooltip por mês: score, % no prazo, unidades, prejuízo, ocorrências, rotas por situação.
 Fonte: `redeMes` da perna. Referência: `dash.draw('rede')`.
@@ -88,3 +88,23 @@ Um link "ver no guia" vindo de uma rota deve abrir a aba e destacar o cartão (`
 
 ## 5. Rodapé
 "Todos os números são fictícios… zonas são uma divisão aproximada da cidade em cinco partes… (IBGE)."
+
+## 6. Ocorrências `#ocorrencias` (`features/ocorrencias/`)
+Precisa da API (`VITE_API_URL`); sem ela, a página explica como configurar.
+- **Registrar ocorrência** (reserva do WhatsApp e entrada do SAC): relato + foto opcional (JPG/PNG/WebP até 5 MB, com prévia e progresso).
+  "Analisar relato" chama `POST /ocorrencias/extrair` e mostra a **ficha revisável**:
+  selo "Ficha gerada por IA · modelo · hora · tempo · custo"; alerta de **dados pessoais mascarados**; alerta de **instrução suspeita**
+  tratada como dado; se faltar campo, a pergunta da IA e um campo de complemento ("Analisar de novo com o complemento").
+  Campos obrigatórios marcados com *; os que a IA não encontrou ficam destacados ("A IA não encontrou no relato").
+  Placa só como pseudônimo (`VEIC-xxxx`). "Confirmar e registrar" (`POST /ocorrencias`) ou "Descartar".
+  Depois de registrar: protocolo e "Ver a rota na Transferência".
+- **Ocorrências recentes** (`GET /ocorrencias/recentes`): tipo, canal (WhatsApp/Formulário), rota, situação (registrada; aguardando
+  validação de ação; ação em acompanhamento) e custo. Expandindo: **relato original (mascarado) ao lado da ficha registrada**.
+
+## 7. Ações `#acoes` (`features/acoes/`)
+- **Rotas que pedem ação**: críticas e em atenção sem ação ativa, da pior para a melhor, filtro por etapa, 6 por vez.
+  Cada uma mostra a sugestão do guia (regra) com a fonte (link para a prática no guia) e os botões
+  **Validar e acompanhar**, **Sugerir com IA** (`POST /acoes/sugerir`: texto, prática, justificativa e "a IA consultou: dados da rota ·
+  ocorrências do mês · guia") e **Descartar** (grava a ação com situação Descartada).
+- **Em acompanhamento** e **Histórico** (concluídas, canceladas e descartadas): tabela da §3.6 com a etapa.
+- O mesmo bloco de ação aparece no detalhe da rota e na Visão geral (ação prioritária).

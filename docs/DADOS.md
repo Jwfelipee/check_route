@@ -63,14 +63,29 @@ front ignora esses campos extras.
 
 | Método | Caminho | Corpo → resposta |
 |---|---|---|
-| POST | `/ocorrencias/extrair` | `{relato, imagemBase64?, imagemTipo?, rota_id?}` → `{ok, ficha, faltando[], pergunta, meta}`. Não grava. `ok=false` quando falta tipo, rota, data/hora ou trecho, e `pergunta` diz o que pedir ao motorista |
-| POST | `/ocorrencias` | ficha revisada pela pessoa (`tipo`, `rota_id`, `data_hora`, `trecho`, `produto`, `custo_estimado` obrigatórios) → `Ocorrencia` gravada, status Aberta |
-| POST | `/acoes/sugerir` | `{rota_id, numeros: {chave: valor}, foco?, tipo_mais_caro?}` com os números que o front já calculou → `{pratica_id, acao, justificativa, numeros_usados, numeros_fora, pratica, meta}` |
+| POST | `/ocorrencias/extrair` | `{relato, imagemBase64?, imagemTipo?, rota_id?}` → `{ok, ficha, faltando[], pergunta, revisar[], relato_mascarado, privacidade, guardas, meta}`. Não grava |
+| POST | `/ocorrencias` | ficha revisada pela pessoa (`tipo`, `rota_id`, `data_hora`, `trecho`, `produto`, `custo_estimado` obrigatórios; `canal`: `whatsapp` \| `formulario`; `com_foto`) → `Ocorrencia` gravada (só dados mascarados), status Aberta |
+| GET | `/ocorrencias/recentes?limite=50` | ocorrências registradas pelo relato, mais novas primeiro, com `canal` e `detalhes` (ficha, relato mascarado, privacidade, guardas) |
+| POST | `/acoes/sugerir` | `{rota_id, numeros, foco?, tipo_mais_caro?}` → `{pratica_id, acao, justificativa, numeros_usados, ferramentas_chamadas, numeros_fora, pratica, meta}` |
+| POST | `/acoes` | também aceita `status: 'Descartada'` (sem responsável/prazo): a sugestão recusada fica no histórico |
 | GET | `/ia/uso` | chamadas de IA por operação: tokens, custo em US$ e latência |
-| GET | `/health` | `{ok, fonte}` (`gold` ou `json`) |
+| GET | `/health` | `{ok, banco, fonte}` |
 
 `meta.modo` diz se respondeu o Claude (`claude`) ou o modo simulado (`simulado`, sem chave ou com falha).
-`numeros_fora` lista números citados na ação que não vieram do código (deve ficar vazio).
+
+**Tool use na ação sugerida.** A IA (Claude Sonnet 5.5, `toolRunner` do SDK) não recebe os dados prontos: chama
+`consultar_rota`, `ocorrencias_da_rota` (por tipo, com taxa por mil viagens, calculada na API) e `listar_praticas`, e só responde
+por `propor_acao`, que recusa prática fora do guia. `ferramentas_chamadas` mostra o que ela consultou; `numeros_fora` lista
+número citado que não veio do front nem das ferramentas (deve ficar vazio).
+
+**Dados pessoais** (`app/api/src/privacidade.ts`). Telefone, CPF, e-mail, nome do motorista e placa são mascarados antes de
+o relato ir ao Claude e antes de gravar. Placa e motorista viram pseudônimos estáveis (`VEIC-xxxx`, `Motorista #xxxx`), o que
+ainda permite cruzar o mesmo veículo. Cobre o cabeçalho `[via WhatsApp <telefone>, <nome>]` que o app de WhatsApp anexa.
+
+**Prompt injection** (`app/api/src/guardas.ts`). O relato não fecha a tag `<relato>` (`<` e `>` viram `‹ ›`); frases que tentam
+mandar na IA são sinalizadas para quem revisa; a saída passa por schema e regras do código (rota existente, enum, custo
+plausível, prática do guia); extrair não grava. Evidência: `npm run seguranca -w app/api` (4 relatos adversariais pela extração
+real) e `npm test -w app/api`.
 
 ## Base real: planilha bronze → gold
 
@@ -96,6 +111,14 @@ Hoje o gold sai **idêntico** aos JSON do front nos 5 recursos. Regras aplicadas
 | `referencia` | posição da aba Índice |
 
 O guia de boas práticas (`praticas.json`) não está na bronze e continua vindo do JSON.
+
+### Cenário da demo: acidentes na T02 (`app/api/src/etl/cenario-acidentes.ts`)
+A bronze não tem tipo de acidente na transferência. O ETL planta, na camada bronze, **35 acidentes na T02
+(CD Cajamar → Hub Belo Horizonte, BR-381 Fernão Dias)** de junho a novembro: 4 tipos novos (Colisão, Tombamento,
+Saída de pista, Avaria por frenagem), ligados a viagens reais, concentrados em saídas noturnas e na serra (km 487–553),
+com relato, foto, custos (FIN) e eventos (SAC); a viagem acidentada chega atrasada ao hub. A T02 cai de 85 (junho)
+para 54, crítica (novembro). Determinístico e idempotente (protocolos `SACDEMO…`); `npm run etl -w app/api -- --sem-cenario`
+gera o gold só com a planilha. O `etl:check` deixa o cenário fora da comparação e o lista à parte.
 
 Para trocar a base de novo (outro banco, outra planilha), basta uma função que devolva esses recursos
 em `app/api/src/store.ts` e escolher por `DATA_SOURCE`.

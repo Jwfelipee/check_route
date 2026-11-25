@@ -1,15 +1,14 @@
 /**
- * Ações validadas ("de sugestão para acompanhamento").
- * No artifact ficavam no banco compartilhado (data/time/acoes). Aqui há um
- * repositório com duas implementações: localStorage (protótipo, um navegador só)
- * e HTTP (quando houver API). Trocar é mudar uma linha em `acoesRepo`.
+ * Ações validadas ("de sugestão para acompanhamento") e descartadas.
+ * Duas implementações: HTTP (API, compartilhado entre todos) e localStorage
+ * (sem API, um navegador só). Trocar é mudar uma linha em `acoesRepo`.
  */
 import type { Acao, AcaoStatus } from '@/lib/types';
 
 export interface AcoesRepo {
   listar(): Promise<Acao[]>;
   criar(a: Omit<Acao, 'id'>): Promise<Acao>;
-  mudarStatus(id: string, status: Exclude<AcaoStatus, 'Em acompanhamento'>): Promise<void>;
+  mudarStatus(id: string, status: Extract<AcaoStatus, 'Concluída' | 'Cancelada'>): Promise<void>;
 }
 
 const hoje = () => new Date().toISOString().slice(0, 10);

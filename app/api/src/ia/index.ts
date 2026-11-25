@@ -41,7 +41,7 @@ function custo(uso: claude.Uso): number {
 async function executar<T>(
   operacao: string,
   real: () => Promise<{ dados: T; uso: claude.Uso }>,
-  simulado: () => T,
+  simulado: () => T | Promise<T>,
 ): Promise<{ dados: T; meta: Meta }> {
   const t0 = performance.now();
   let aviso: string | undefined;
@@ -55,7 +55,7 @@ async function executar<T>(
       aviso = `Claude indisponível (${(e as Error).message}); resposta do modo simulado.`;
     }
   }
-  const dados = simulado();
+  const dados = await simulado();
   const meta: Meta = {
     modo: 'simulado',
     modelo: 'regras-simuladas',

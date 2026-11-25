@@ -8,6 +8,7 @@
   --brand-navy: #101c3a;   /* azul profundo: menu lateral, texto principal */
   --brand-blue: #0645f5;   /* azul elétrico: ação primária, foco, seleção */
   --brand-lilac: #b184f5;  /* lilás: só destaque, nunca texto pequeno */
+  --brand-lilac-ink: #5b2fb0; /* lilás escuro para texto sobre fundo lilás claro (contraste ≥ 4,5:1) */
   --brand-white: #ffffff;
 
   /* ---- Superfícies e texto ---- */

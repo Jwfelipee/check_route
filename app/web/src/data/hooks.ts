@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { carregaFontes, carregaMapa } from './api';
 import { acoesRepo } from './acoes';
+import { iaApi, temApi } from './ia';
 import {
   calcKpis, calcKpisTotal, calcPadroes, calcRedeMes, calcRegioes, calcRotaMes, calcSaudeRotas, calcZonas,
 } from '@/lib/score';
 import { useFiltros } from '@/app/store';
+import type { Acao, AcaoStatus } from '@/lib/types';
+import type { SaudeRota } from '@/lib/score';
 
 export const useFontes = () => useQuery({ queryKey: ['fontes'], queryFn: carregaFontes, staleTime: Infinity });
 export const useMapa = () => useQuery({ queryKey: ['mapa'], queryFn: carregaMapa, staleTime: Infinity });
@@ -43,4 +46,62 @@ export function usePainel() {
   }, [base, filtros]);
 
   return { ...q, data: base && filtrado ? { ...base, ...filtrado } : null };
+}
+
+// ---------------------------------------------------------------- ações e ocorrências
+
+export const useRecentes = () =>
+  useQuery({ queryKey: ['recentes'], queryFn: iaApi.recentes, enabled: temApi, refetchInterval: 15_000 });
+
+/** Ação ativa (em acompanhamento) de cada rota. */
+export function useAcaoAtivaPorRota() {
+  const { data } = useAcoes();
+  return useMemo(() => new Map((data ?? []).filter((a) => a.status === 'Em acompanhamento').map((a) => [a.rota_id, a])), [data]);
+}
+
+export function useCriarAcao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (a: Omit<Acao, 'id'>) => acoesRepo.criar(a),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['acoes'] }),
+  });
+}
+
+export function useMudarStatusAcao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: Extract<AcaoStatus, 'Concluída' | 'Cancelada'> }) => acoesRepo.mudarStatus(id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['acoes'] }),
+  });
+}
+
+/** Grava a ocorrência confirmada e recarrega o painel (score, taxas e recentes). */
+export function useRegistrarOcorrencia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: iaApi.registrar,
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: ['fontes'] }), qc.invalidateQueries({ queryKey: ['recentes'] })]),
+  });
+}
+
+export const useSugerirAcao = () => useMutation({ mutationFn: iaApi.sugerir });
+
+/** Números da rota já calculados no front, enviados à IA (ela não recalcula nada). */
+export function numerosDaRota(r: SaudeRota): Record<string, number | string | null> {
+  const arred = (v: number | null, casas = 1) => (v == null ? null : Math.round(v * 10 ** casas) / 10 ** casas);
+  return {
+    score: arred(r.score, 0),
+    score_mes_anterior: arred(r.score_ant, 0),
+    situacao: r.situacao,
+    unidades_no_mes: r.unidades,
+    ocorrencias: r.ocorrencias,
+    ocorrencias_por_100: arred(r.ocorr_100),
+    acidentes: r.acidentes,
+    acidentes_por_mil: arred(r.acidentes_mil),
+    pct_prazo: r.pct_prazo == null ? null : `${Math.round(r.pct_prazo * 100)}%`,
+    prejuizo_mes: Math.round(r.prejuizo),
+    economia_estimada: Math.round(r.economia),
+    tipo_mais_caro: r.tipo_top,
+    produto_mais_afetado: r.produto_top,
+  };
 }
