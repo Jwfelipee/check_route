@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { semearContatos } from './contatos.js';
 
 const aqui = dirname(fileURLToPath(import.meta.url));
 export const API_DIR = resolve(aqui, '..');
@@ -110,6 +111,7 @@ export async function iniciarBanco() {
     );
   `);
   await prepararLeitura().catch((e) => console.warn('[db] papel de leitura do MCP não preparado:', (e as Error).message));
+  await semearContatos().catch((e) => console.warn('[db] contatos de exemplo não criados:', (e as Error).message));
 }
 
 /**

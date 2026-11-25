@@ -66,6 +66,8 @@ export const FichaConfirmada = FichaIa.omit({ pergunta_ao_motorista: true }).ext
   canal: z.enum(['whatsapp', 'formulario']).default('formulario'),
   /** Só a indicação de que o relato veio com foto (a imagem não é guardada). */
   com_foto: z.boolean().optional(),
+  /** Contato cadastrado que registrou (obrigatório pelo WhatsApp). A API confere se a rota é dele. */
+  reportado_por: z.string().optional(),
 });
 export type FichaConfirmada = z.infer<typeof FichaConfirmada>;
 

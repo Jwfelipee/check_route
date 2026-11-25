@@ -2,7 +2,8 @@
  * Ferramentas do agente. O modelo decide QUANDO chamar; o código decide O QUE vale:
  *  - analisar_relato: manda o relato (e a última foto) para POST /ocorrencias/extrair da API;
  *  - pedir_confirmacao: o código confere se a ficha está completa e envia o resumo com botões;
- *  - listar_hubs: lista os hubs de destino para ajudar o motorista a dizer a rota.
+ *  - minhas_rotas: as rotas do contato que está conversando (nunca as de outras pessoas).
+ * O escopo é regra de código: a rota da ficha precisa estar entre as do contato.
  * Não existe ferramenta de "registrar": a ocorrência só entra na API quando o motorista
  * aperta "Confirmar" (tratado em agente/index.ts, sem passar pelo modelo).
  */
@@ -42,8 +43,8 @@ export const FERRAMENTAS: Anthropic.Beta.BetaTool[] = [
     input_schema: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },
   {
-    name: 'listar_hubs',
-    description: 'Lista os hubs de destino das rotas de transferência (CD Cajamar → hub), para identificar a rota.',
+    name: 'minhas_rotas',
+    description: 'Lista as rotas de transferência desta pessoa (CD Cajamar → hub), as únicas em que ela pode registrar ocorrência.',
     strict: true,
     input_schema: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },
@@ -66,14 +67,30 @@ export async function executar(nome: string, entrada: unknown, ctx: Contexto): P
       }
       const r = await api.extrair(relato, imagem);
       const { pergunta_ao_motorista: _p, ...ficha } = r.ficha;
+
+      // Escopo: a rota da ficha tem de ser de quem está falando. Só uma rota? É ela quando o relato não diz o hub.
+      const ct = c.contato;
+      let rotaFora = false;
+      let rotaAssumida = false;
+      if (ct && !ct.todas_as_rotas) {
+        const minhas = ct.rotas.map((x) => x.rota_id);
+        if (ficha.rota_id && !minhas.includes(String(ficha.rota_id))) { rotaFora = true; ficha.rota_id = null; }
+        else if (!ficha.rota_id && minhas.length === 1) { ficha.rota_id = minhas[0]; rotaAssumida = true; }
+      }
       c.ficha_pendente = { ...ficha, relato };
       c.faltando = faltandoNaFicha(c.ficha_pendente);
       c.aguardando_confirmacao = false;
+      const nomesRotas = ct?.rotas.map((x) => x.rota).join('; ');
+      const pergunta = rotaFora
+        ? `Você só pode registrar ocorrências nas suas rotas: ${nomesRotas}. Foi em qual delas?`
+        : c.faltando.length ? (r.pergunta ?? perguntaPadrao(c.faltando)) : null;
       return {
         texto: JSON.stringify({
           completa: c.faltando.length === 0,
           faltando: c.faltando,
-          pergunta_sugerida: c.faltando.length ? (r.pergunta ?? perguntaPadrao(c.faltando)) : null,
+          pergunta_sugerida: pergunta,
+          ...(rotaFora ? { aviso: 'A rota citada não está entre as rotas desta pessoa; não foi usada.' } : {}),
+          ...(rotaAssumida ? { aviso: 'A rota não foi citada; foi usada a única rota desta pessoa.' } : {}),
           ficha,
         }),
       };
@@ -83,7 +100,7 @@ export async function executar(nome: string, entrada: unknown, ctx: Contexto): P
       if (!c.ficha_pendente || faltando.length) {
         return { texto: JSON.stringify({ enviado: false, faltando, pergunta_sugerida: perguntaPadrao(faltando) }), erro: true };
       }
-      const hub = (await api.hubs().catch(() => [])).find((h) => h.rota_id === c.ficha_pendente!.rota_id);
+      const hub = c.contato?.rotas.find((h) => h.rota_id === c.ficha_pendente!.rota_id);
       await enviarBotoes(c.telefone, resumoParaConfirmar(c.ficha_pendente, hub?.rota), [
         { id: BOTAO_CONFIRMAR, titulo: 'Confirmar' },
         { id: BOTAO_CORRIGIR, titulo: 'Corrigir' },
@@ -91,9 +108,9 @@ export async function executar(nome: string, entrada: unknown, ctx: Contexto): P
       c.aguardando_confirmacao = true;
       return { texto: JSON.stringify({ enviado: true }), encerraTurno: true };
     }
-    case 'listar_hubs': {
-      const hubs = await api.hubs();
-      return { texto: hubs.map((h) => `${h.rota_id}: ${h.rota}`).join('\n') };
+    case 'minhas_rotas': {
+      const rotas = c.contato?.rotas ?? [];
+      return { texto: rotas.length ? rotas.map((h) => `${h.rota_id}: ${h.rota}`).join('\n') : 'Nenhuma rota cadastrada para esta pessoa.' };
     }
     default:
       return { texto: `Ferramenta desconhecida: ${nome}`, erro: true };

@@ -8,7 +8,8 @@ import { executar, type Contexto } from './ferramentas.js';
 export async function turnoSimulado(ctx: Contexto, _entrada: string): Promise<string | null> {
   const c = ctx.conversa;
   if (c.relato.trim().length < 5) {
-    return 'Olá! Sou o assistente de ocorrências. Me conte o que aconteceu na viagem: o que houve, onde, quando e para qual hub a carga ia.';
+    const nome = c.contato?.nome.split(' ')[0];
+    return `Olá${nome ? `, ${nome}` : ''}! Sou o assistente de ocorrências. Me conte o que aconteceu na viagem: o que houve, onde e quando${c.contato?.rotas.length === 1 ? '' : ' e para qual hub a carga ia'}.`;
   }
   const analise = JSON.parse((await executar('analisar_relato', { relato: c.relato }, ctx)).texto) as { completa: boolean; pergunta_sugerida: string | null };
   if (!analise.completa) return analise.pergunta_sugerida;

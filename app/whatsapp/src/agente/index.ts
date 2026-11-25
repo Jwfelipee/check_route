@@ -4,7 +4,7 @@
  * Mensagens do mesmo telefone são processadas em fila, uma de cada vez.
  */
 import { api } from '../api.js';
-import { config, numeroPermitido } from '../config.js';
+import { config } from '../config.js';
 import { carregar, recomecar, registrarTrilha, salvar, type Conversa } from '../estado.js';
 import { enviarTexto, marcarLida } from '../meta/client.js';
 import type { MensagemRecebida } from '../meta/webhook.js';
@@ -27,11 +27,22 @@ const turno = (c: Conversa, entrada: string) => (config.iaReal ? turnoClaude : t
 
 async function tratar(m: MensagemRecebida) {
   await marcarLida(m.id);
-  if (!numeroPermitido(m.de)) {
-    await enviarTexto(m.de, 'Este número não está autorizado a registrar ocorrências. Fale com a sua transportadora.');
+
+  // Quem fala é quem o painel cadastrou para este número (verificado pela Meta). Sem cadastro, nada vai para a IA.
+  let contato;
+  try {
+    contato = await api.contato(m.de);
+  } catch (e) {
+    console.error(`[wa] não consegui conferir o cadastro de ${m.de}:`, e);
+    await enviarTexto(m.de, 'Estou com instabilidade para confirmar o seu cadastro agora. Tente de novo em alguns minutos.');
     return;
   }
-  let c = await carregar(m.de, m.nome);
+  if (!contato || !contato.ativo) {
+    await enviarTexto(m.de, 'Este número não está cadastrado para registrar ocorrências. Peça ao responsável da sua transportadora para cadastrar você no painel.');
+    return;
+  }
+  let c = await carregar(m.de, contato.nome);
+  c.contato = contato;
   let resposta: string | null = null;
 
   switch (m.tipo) {
@@ -82,10 +93,16 @@ async function confirmar(c: Conversa): Promise<string> {
   if (!c.aguardando_confirmacao || !c.ficha_pendente) return 'Não tenho nenhuma ocorrência esperando confirmação. Me conte o que aconteceu.';
   const faltando = faltandoNaFicha(c.ficha_pendente);
   if (faltando.length) return 'A ficha ainda está incompleta. Me diga o que falta e eu mando o resumo de novo.';
-  const ficha = { ...c.ficha_pendente, relato: `${c.ficha_pendente.relato ?? c.relato}\n[via WhatsApp ${c.telefone}${c.nome ? `, ${c.nome}` : ''}]` };
+  const ct = c.contato;
+  if (!ct) return 'Não consegui confirmar o seu cadastro. Tente de novo em alguns minutos.';
+  if (!ct.todas_as_rotas && !ct.rotas.some((r) => r.rota_id === c.ficha_pendente?.rota_id)) {
+    return `Essa rota não está entre as suas (${ct.rotas.map((r) => r.rota).join('; ')}). Me diga em qual delas foi.`;
+  }
+  // Quem registrou vai no campo próprio (reportado_por), não no texto do relato: o relato fica sem telefone nem nome.
+  const ficha = { ...c.ficha_pendente, relato: c.ficha_pendente.relato ?? c.relato };
   try {
-    const oc = await api.registrar(ficha);
-    await registrarTrilha(c.telefone, oc.id, ficha);
+    const oc = await api.registrar(ficha, ct.id);
+    await registrarTrilha(c.telefone, oc.id, ficha, ct.id);
     return `✅ Ocorrência registrada. Protocolo: *${oc.id}*.\nObrigado! Se precisar registrar outra, é só mandar mensagem.`;
   } catch (e) {
     console.error('[wa] falha ao registrar:', e);

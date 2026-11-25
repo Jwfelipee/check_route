@@ -8,12 +8,15 @@
 import pg from 'pg';
 import type Anthropic from '@anthropic-ai/sdk';
 import { config } from './config.js';
+import type { Contato } from './api.js';
 
 export const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 5 });
 
 export interface Conversa {
   telefone: string;
   nome: string | null;
+  /** Quem está falando, vindo do cadastro a cada mensagem (não é guardado aqui: desativar vale na hora). */
+  contato: Contato | null;
   historico: Anthropic.Beta.BetaMessageParam[];
   relato: string;
   ficha_pendente: Record<string, unknown> | null;
@@ -48,6 +51,7 @@ export async function iniciarEstado() {
       ficha JSONB NOT NULL,
       criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    ALTER TABLE wa_registro ADD COLUMN IF NOT EXISTS contato_id TEXT;
   `);
 }
 
@@ -58,7 +62,7 @@ export async function primeiraVez(mensagemId: string): Promise<boolean> {
 }
 
 const vazia = (telefone: string, nome: string | null): Conversa => ({
-  telefone, nome, historico: [], relato: '', ficha_pendente: null, faltando: [], foto_media_id: null, aguardando_confirmacao: false,
+  telefone, nome, contato: null, historico: [], relato: '', ficha_pendente: null, faltando: [], foto_media_id: null, aguardando_confirmacao: false,
 });
 
 export async function carregar(telefone: string, nome?: string): Promise<Conversa> {
@@ -68,7 +72,7 @@ export async function carregar(telefone: string, nome?: string): Promise<Convers
   );
   const r = rows[0];
   if (!r || r.expirada) return vazia(telefone, nome ?? r?.nome ?? null);
-  return { ...r, nome: nome ?? r.nome } as Conversa;
+  return { ...r, nome: nome ?? r.nome, contato: null } as Conversa;
 }
 
 export async function salvar(c: Conversa) {
@@ -84,6 +88,6 @@ export async function salvar(c: Conversa) {
 
 export const recomecar = (c: Conversa): Conversa => vazia(c.telefone, c.nome);
 
-export async function registrarTrilha(telefone: string, ocorrenciaId: string, ficha: Record<string, unknown>) {
-  await pool.query('INSERT INTO wa_registro (telefone, ocorrencia_id, ficha) VALUES ($1, $2, $3)', [telefone, ocorrenciaId, JSON.stringify(ficha)]);
+export async function registrarTrilha(telefone: string, ocorrenciaId: string, ficha: Record<string, unknown>, contatoId: string) {
+  await pool.query('INSERT INTO wa_registro (telefone, ocorrencia_id, ficha, contato_id) VALUES ($1, $2, $3, $4)', [telefone, ocorrenciaId, JSON.stringify(ficha), contatoId]);
 }

@@ -32,6 +32,8 @@ services:
       MCP_URL: http://mcp:7335/mcp
       MCP_ESCOPO_SECRET: ${MCP_ESCOPO_SECRET:-checkroute-escopo-dev}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-checkroute-interno-dev}
+      # Contatos de teste do WhatsApp (seu número): telefone:nome:papel:T02,T05;outro...
+      WA_CONTATOS_DEMO: ${WA_CONTATOS_DEMO:-}
       BRONZE_PATH: /bronze/bronze_planilha.xlsx
     volumes:
       # A planilha bronze não vai para a imagem: é lida de docs/ na hora do ETL.
@@ -80,13 +82,16 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       WA_MODELO: ${WA_MODELO:-claude-opus-5-5}
       AI_PROVIDER: ${AI_PROVIDER:-}
-      WA_NUMEROS_PERMITIDOS: ${WA_NUMEROS_PERMITIDOS:-}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-checkroute-interno-dev}
+      MCP_URL: http://mcp:7335/mcp
     ports:
       - '7334:7334'
     depends_on:
       db:
         condition: service_healthy
       api:
+        condition: service_started
+      mcp:
         condition: service_started
     restart: unless-stopped
 

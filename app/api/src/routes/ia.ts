@@ -11,6 +11,7 @@ import { sql } from '../db.js';
 import { ia } from '../ia/index.js';
 import { assinaturaDaRota, conferirProposta } from '../ia/ferramentas.js';
 import { ErroIa } from '../ia/mcp.js';
+import { contatoPorId, internoValido, podeNaRota, publico } from '../contatos.js';
 import {
   CAMPOS_OBRIGATORIOS,
   FichaConfirmada,
@@ -85,13 +86,23 @@ export async function rotasIa(app: FastifyInstance) {
     const rota = (await store.rotas()).find((r) => r.rota_id === f.rota_id && r.perna === 'transferencia');
     if (!rota) return reply.code(400).send({ erro: `Rota de transferência desconhecida: ${f.rota_id}` });
 
+    // Quem registra: pelo WhatsApp só contato cadastrado e ativo, em rota dele, e só o app de WhatsApp (token interno).
+    let contato = null;
+    if (f.canal === 'whatsapp' && !internoValido(req)) return reply.code(401).send({ erro: 'Registro por WhatsApp: uso interno do app de WhatsApp' });
+    if (f.canal === 'whatsapp' && !f.reportado_por) return reply.code(403).send({ erro: 'Registro por WhatsApp exige um contato cadastrado' });
+    if (f.reportado_por) {
+      contato = await contatoPorId(f.reportado_por);
+      if (!contato || !contato.ativo) return reply.code(403).send({ erro: 'Contato não cadastrado ou inativo' });
+      if (!podeNaRota(contato, f.rota_id)) return reply.code(403).send({ erro: 'Esta rota não está entre as rotas deste contato' });
+    }
+
     const data = f.data_hora.slice(0, 10);
     const ref = (await store.referencia()).data;
     const diasAberto = Math.max(0, Math.round((Date.parse(ref) - Date.parse(data)) / 86_400_000));
 
     // Nada entra no banco sem máscara: relato e campos livres de novo (defesa em profundidade,
     // vale para o WhatsApp, que anexa telefone e nome ao relato) e placa só como pseudônimo.
-    const { relato, canal, com_foto, ...campos } = f;
+    const { relato, canal, com_foto, reportado_por: _rep, ...campos } = f;
     const privRelato = relato ? mascarar(relato) : { texto: undefined, mascarados: [] as TipoDado[] };
     const privCampos = mascararCampos({ ...campos, placa: mascararPlaca(campos.placa) }, [
       'resumo', 'trecho', 'embalagem', 'condicao_via_clima', 'tipo_veiculo',
@@ -122,6 +133,7 @@ export async function rotasIa(app: FastifyInstance) {
         registrada_em: new Date().toISOString(),
         privacidade: { mascarados: unir(privRelato.mascarados, privCampos.mascarados) },
         guardas,
+        ...(contato ? { reportado_por: publico(contato) } : {}),
       },
     };
     return reply.code(201).send(await store.criarOcorrencia(oc));

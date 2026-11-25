@@ -23,7 +23,7 @@ export const config = {
   databaseUrl: env('DATABASE_URL', 'postgres://saude:saude@localhost:7432/saude_rotas'),
   modelo: env('WA_MODELO', 'claude-opus-5-5'),
   iaReal: env('AI_PROVIDER') !== 'fake' && !!(env('ANTHROPIC_API_KEY') || env('ANTHROPIC_AUTH_TOKEN')),
-  numerosPermitidos: new Set(env('WA_NUMEROS_PERMITIDOS').split(',').map((n) => n.replace(/\D/g, '')).filter(Boolean)),
+  /** Chave de uso interno com a API (contatos, escopo do MCP, registro por WhatsApp). */
+  internalToken: env('INTERNAL_TOKEN', 'checkroute-interno-dev'),
+  mcpUrl: env('MCP_URL', 'http://localhost:7335/mcp'),
 };
-
-export const numeroPermitido = (wa: string) => config.numerosPermitidos.size === 0 || config.numerosPermitidos.has(wa.replace(/\D/g, ''));
