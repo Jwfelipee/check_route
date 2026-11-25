@@ -11,7 +11,7 @@ Na raiz do monorepo:
 
 ```bash
 npm install
-docker compose up -d --build                # Postgres (localhost:7432) + API (http://localhost:7333)
+docker compose up -d --build                # Postgres (7432) + API (http://localhost:7333) + MCP (7335)
 docker compose run --rm api npm run etl     # (uma vez) planilha bronze docs/bronze_planilha.xlsx → Postgres
 docker compose restart api                  # a API passa a ler o gold
 npm run dev -w app/web                      # painel em http://localhost:5173
@@ -35,7 +35,16 @@ Fastify + TypeScript + **PostgreSQL 17** (driver `pg`), empacotada em Docker (`a
   e, se não, os JSON de `app/web/public/data`. `GET /health` diz qual fonte está ativa.
 - Guarda as ações validadas (`/acoes`) e as ocorrências confirmadas na demo.
 - Roda a IA do recorte: relato vira ficha (`POST /ocorrencias/extrair`) e ação sugerida do guia (`POST /acoes/sugerir`).
-  Usa **Claude Haiku 5.5** na extração e **Claude Sonnet 5.5** na ação. Sem `ANTHROPIC_API_KEY`, entra o modo simulado.
+  Usa **Claude Haiku 5.5** na extração e **Claude Sonnet 5.5** na ação. Sem `ANTHROPIC_API_KEY` a extração cai no modo simulado,
+  mas **a ação sugerida exige a chave** (não existe sugestão sem IA): sem ela a tela mostra o erro com "Tentar de novo".
+  A ação parte do guia de boas práticas e consulta os dados da rota no servidor MCP (`MCP_URL`).
+
+### MCP (`app/mcp`)
+
+Servidor MCP só de leitura (porta 7335, `docker compose up -d --build mcp`) com os dados específicos de cada rota (horário, trecho,
+clima, veículos, atrasos, comparação, ações anteriores). Conecta ao Postgres com o papel `checkroute_leitura` (acesso mínimo) e
+cada conexão traz um token de escopo: o WhatsApp só enxerga as rotas do contato que está conversando.
+`npm run mcp:smoke -w app/mcp` chama as ferramentas na T02; `npm test -w app/mcp` roda os testes de escopo.
 - Configuração: copie `app/api/.env.example` para `app/api/.env`.
 
 | Comando | O que faz |
@@ -66,6 +75,7 @@ curl -s -XPOST localhost:7333/ocorrencias -H 'content-type: application/json' -d
 # 4. ação sugerida para o padrão da rota, com os números que o front calculou
 curl -s -XPOST localhost:7333/acoes/sugerir -H 'content-type: application/json' \
   -d '{"rota_id":"T02","foco":"ocorr_100","tipo_mais_caro":"Tombamento","numeros":{"score":58,"n_tipo":3,"tipo":"Tombamento","produto":"Eletrodomésticos"}}'
+# (com "contexto":"..." a IA gera outra versão considerando o que a pessoa disse)
 
 # 5. custo e latência de cada chamada de IA
 curl -s localhost:7333/ia/uso
@@ -104,11 +114,12 @@ reference/    artifact original, só para consulta
 | Aba Guia de boas práticas | ✅ |
 | Identidade CheckRoute (design system v1.0): menu lateral, Visão geral, tokens, Montserrat | ✅ [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) |
 | API com o contrato, ações persistidas e ETL da bronze (gold idêntico aos JSON) | ✅ `app/api` |
-| IA: relato → ficha, ação sugerida com tool use, registro de custo, eval com gabarito | ✅ `app/api` |
+| IA: relato → ficha, ação sugerida por IA (guia + dados da rota via MCP, práticas citadas, "Dar detalhes"), registro de custo, eval com gabarito | ✅ `app/api` |
+| Servidor MCP só de leitura com escopo por remetente; contatos do WhatsApp cadastrados no painel | ✅ `app/mcp`, `app/api`, `app/whatsapp` |
 | Dados pessoais mascarados e guardas contra prompt injection (com testes) | ✅ `app/api` |
 | Acidentes plantados na T02 (BR-381) para a demo | ✅ cenário do ETL |
 | Mapas (zona da cidade / região do Brasil), gráfico mês a mês, detalhe completo da rota, ações em acompanhamento + modal | ✅ |
-| Telas de Ocorrências (registro com ficha revisável, recentes) e Ações (sugestão com IA, validar, descartar, histórico) | ✅ [docs/TELAS.md](docs/TELAS.md) §6–7 |
+| Telas de Ocorrências, Ações (sugestão por IA, dar detalhes, validar, descartar, histórico) e Contatos | ✅ [docs/TELAS.md](docs/TELAS.md) §6–8 |
 
 ## Documentação
 

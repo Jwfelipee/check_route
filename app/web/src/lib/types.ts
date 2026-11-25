@@ -114,7 +114,7 @@ export interface Acao {
   cancelada_em?: string;
   descartada_em?: string;
   /** De onde veio o texto da ação: regra do guia ou IA. */
-  origem_sugestao?: 'regra' | 'ia';
+  origem_sugestao?: 'regra' | 'ia' | 'ia_contexto';
 }
 
 export interface Fontes {

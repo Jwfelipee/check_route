@@ -6,12 +6,16 @@
 import { carregarBronze } from './load-bronze.js';
 import { construirGold } from './build-gold.js';
 import { plantarCenarioAcidentes } from './cenario-acidentes.js';
-import { pool } from '../db.js';
+import { semearContatos } from '../contatos.js';
+import { pool, prepararLeitura, removerViewsLeitura } from '../db.js';
 
 const t0 = performance.now();
+await removerViewsLeitura(); // as views dependem das tabelas que o ETL recria
 if (!process.argv.includes('--gold')) await carregarBronze();
 // Cenário da demo (acidentes na T02). `--sem-cenario` gera o gold só com a planilha.
 if (!process.argv.includes('--sem-cenario')) await plantarCenarioAcidentes();
 await construirGold();
+await prepararLeitura();
+await semearContatos();
 console.log(`ETL concluído em ${((performance.now() - t0) / 1000).toFixed(1)} s`);
 await pool.end();

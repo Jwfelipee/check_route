@@ -9,6 +9,7 @@ COPY package.json package-lock.json ./
 COPY app/api/package.json app/api/
 COPY app/web/package.json app/web/
 COPY app/whatsapp/package.json app/whatsapp/
+COPY app/mcp/package.json app/mcp/
 RUN npm ci --workspace app/api --include-workspace-root=false --no-audit --no-fund
 
 COPY app/api app/api

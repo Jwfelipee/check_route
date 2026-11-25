@@ -7,6 +7,7 @@ const ITENS: { pagina: Pagina; label: string; icon: IconName }[] = [
   { pagina: 'ocorrencias', label: 'Ocorrências', icon: 'ocorrencias' },
   { pagina: 'acoes', label: 'Ações', icon: 'acoes' },
   { pagina: 'atendimentos', label: 'Atendimentos', icon: 'conversas' },
+  { pagina: 'contatos', label: 'Contatos', icon: 'contatos' },
   { pagina: 'guia', label: 'Guia de boas práticas', icon: 'guia' },
 ];
 

@@ -66,6 +66,8 @@ export const FichaConfirmada = FichaIa.omit({ pergunta_ao_motorista: true }).ext
   canal: z.enum(['whatsapp', 'formulario']).default('formulario'),
   /** Só a indicação de que o relato veio com foto (a imagem não é guardada). */
   com_foto: z.boolean().optional(),
+  /** Contato cadastrado que registrou (obrigatório pelo WhatsApp). A API confere se a rota é dele. */
+  reportado_por: z.string().optional(),
 });
 export type FichaConfirmada = z.infer<typeof FichaConfirmada>;
 
@@ -73,17 +75,27 @@ export type FichaConfirmada = z.infer<typeof FichaConfirmada>;
 
 export const PedidoSugestao = z.object({
   rota_id: z.string().min(1),
-  /** Números da rota já calculados pelo front (lib/score.ts). A IA só pode usar estes. */
+  /** Números da rota já calculados pelo front (lib/score.ts). A IA só pode usar estes e os das ferramentas. */
   numeros: z.record(z.string(), z.union([z.number(), z.string(), z.null()])),
   foco: z.string().nullable().optional(),
   tipo_mais_caro: z.string().nullable().optional(),
+  /** "Dar detalhes": o que a pessoa sabe e a IA não vê nos dados. Gera uma sugestão nova. */
+  contexto: z.string().trim().max(600).optional(),
+});
+
+/** Prática do guia usada na decisão. Exatamente uma é a principal; as demais apoiam. */
+export const PraticaUsada = z.object({
+  id: z.string().describe('id de uma prática da lista do guia, exatamente como veio'),
+  papel: z.enum(['principal', 'apoio']),
+  como_usou: z.string().describe('Em uma frase: o que desta prática entrou na ação'),
 });
 
 export const SugestaoIa = z.object({
-  pratica_id: z.string().describe('id de uma prática da lista recebida'),
-  acao: z.string().describe('A ação em uma ou duas frases, citando os números recebidos'),
-  justificativa: z.string().describe('Por que esta prática, ligando ao padrão da rota'),
-  numeros_usados: z.array(z.string()).describe('Chaves dos números recebidos que foram citados'),
+  acao: z.string().describe('A ação em uma ou duas frases, citando os números das ferramentas e o id de cada prática usada entre parênteses, ex.: (TRF-08, TRF-05)'),
+  praticas: z.array(PraticaUsada).describe('De 1 a 3 práticas do guia: exatamente uma principal'),
+  justificativa: z.string().describe('Por que esta ação: liga os padrões que as ferramentas mostraram (horário, trecho, tipo, veículo, atraso, histórico) à prática'),
+  numeros_usados: z.array(z.string()).describe('Os números citados, como aparecem no texto'),
+  considerou_contexto: z.string().nullable().describe('Se a pessoa deu detalhes: como eles mudaram a ação. Sem detalhes: null'),
 });
 export type SugestaoIa = z.infer<typeof SugestaoIa>;
 

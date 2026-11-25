@@ -16,7 +16,7 @@ const NovaAcao = z.object({
   prazo: z.string(),
   // Descartada: a sugestão recusada também fica registrada (quem recusou e quando).
   status: z.enum(['Em acompanhamento', 'Descartada']).default('Em acompanhamento'),
-  origem_sugestao: z.enum(['regra', 'ia']).optional(),
+  origem_sugestao: z.enum(['regra', 'ia', 'ia_contexto']).optional(),
   score_inicial: z.number().nullable(),
   validada_em: z.string(),
   validada_por: z.string().nullable(),

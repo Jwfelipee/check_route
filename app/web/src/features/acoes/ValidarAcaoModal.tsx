@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Modal } from '@/design-system';
-import { useCriarAcao } from '@/data/hooks';
+import { useCriarAcao, useResponsaveis } from '@/data/hooks';
 import type { SaudeRota } from '@/lib/score';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -11,10 +11,11 @@ const emDias = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString(
  * responsável e prazo. Sem os três campos, não confirma.
  */
 export function ValidarAcaoModal({ rota, acaoSugerida, praticaId, prazoDias, origem, aberto, onFechar }: {
-  rota: SaudeRota; acaoSugerida: string; praticaId: string | null; prazoDias?: number; origem: 'regra' | 'ia';
+  rota: SaudeRota; acaoSugerida: string; praticaId: string | null; prazoDias?: number; origem: 'ia' | 'ia_contexto';
   aberto: boolean; onFechar: () => void;
 }) {
   const criar = useCriarAcao();
+  const { data: responsaveis } = useResponsaveis(rota.rota_id, aberto);
   const [acao, setAcao] = useState(acaoSugerida);
   const [responsavel, setResponsavel] = useState('');
   const [prazo, setPrazo] = useState(emDias(prazoDias ?? 14));
@@ -50,7 +51,11 @@ export function ValidarAcaoModal({ rota, acaoSugerida, praticaId, prazoDias, ori
       <div className="ds-form-grid">
         <label className="ds-campo"><span>Responsável<span className="ds-req" aria-hidden="true">*</span></span>
           <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Quem vai tocar a ação"
-            aria-invalid={tentou && !responsavel.trim()} required />
+            list="responsaveis-da-rota" autoComplete="off" aria-invalid={tentou && !responsavel.trim()} required />
+          <datalist id="responsaveis-da-rota">
+            {(responsaveis ?? []).map((r) => <option key={r.id} value={r.nome}>{r.transportadora ?? 'Gestor'}</option>)}
+          </datalist>
+          {!!responsaveis?.length && <small>Sugestões: quem responde por esta rota. Pode escrever outro nome.</small>}
         </label>
         <label className="ds-campo"><span>Prazo<span className="ds-req" aria-hidden="true">*</span></span>
           <input type="date" value={prazo} min={hoje()} onChange={(e) => setPrazo(e.target.value)} aria-invalid={tentou && !prazo} required />

@@ -9,7 +9,8 @@ import { SAUDACAO } from './ficha.js';
 export async function turnoSimulado(ctx: Contexto, _entrada: string): Promise<string | null> {
   const c = ctx.conversa;
   if (c.relato.trim().length < 5) {
-    return SAUDACAO;
+    const nome = c.contato?.nome.split(' ')[0];
+    return nome ? SAUDACAO.replace('Olá!', `Olá, ${nome}!`) : SAUDACAO;
   }
   const analise = JSON.parse((await executar('analisar_relato', { relato: c.relato }, ctx)).texto) as { completa: boolean; pergunta_sugerida: string | null };
   if (!analise.completa) return analise.pergunta_sugerida;

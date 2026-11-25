@@ -27,7 +27,7 @@ export const config = {
   adminToken: env('WA_ADMIN_TOKEN'),
   /** Origens do painel que podem chamar /atendimento (vírgula). Vazio = qualquer origem (o token continua obrigatório). */
   corsOrigens: env('WA_CORS_ORIGENS').split(',').map((s) => s.trim()).filter(Boolean),
-  numerosPermitidos: new Set(env('WA_NUMEROS_PERMITIDOS').split(',').map((n) => n.replace(/\D/g, '')).filter(Boolean)),
+  /** Chave de uso interno com a API (contatos, escopo do MCP, registro por WhatsApp). */
+  internalToken: env('INTERNAL_TOKEN', 'checkroute-interno-dev'),
+  mcpUrl: env('MCP_URL', 'http://localhost:7335/mcp'),
 };
-
-export const numeroPermitido = (wa: string) => config.numerosPermitidos.size === 0 || config.numerosPermitidos.has(wa.replace(/\D/g, ''));

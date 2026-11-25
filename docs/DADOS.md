@@ -66,21 +66,50 @@ front ignora esses campos extras.
 | POST | `/ocorrencias/extrair` | `{relato, imagemBase64?, imagemTipo?, rota_id?}` → `{ok, ficha, faltando[], pergunta, revisar[], relato_mascarado, privacidade, guardas, meta}`. Não grava |
 | POST | `/ocorrencias` | ficha revisada pela pessoa (`tipo`, `rota_id`, `data_hora`, `trecho`, `produto`, `custo_estimado` obrigatórios; `canal`: `whatsapp` \| `formulario`; `com_foto`) → `Ocorrencia` gravada (só dados mascarados), status Aberta |
 | GET | `/ocorrencias/recentes?limite=50` | ocorrências registradas pelo relato, mais novas primeiro, com `canal` e `detalhes` (ficha, relato mascarado, privacidade, guardas) |
-| POST | `/acoes/sugerir` | `{rota_id, numeros, foco?, tipo_mais_caro?}` → `{pratica_id, acao, justificativa, numeros_usados, ferramentas_chamadas, numeros_fora, pratica, meta}` |
+| POST | `/acoes/sugerir` | `{rota_id, numeros, foco?, tipo_mais_caro?, contexto?}` → `{acao, praticas[{id, papel, como_usou, titulo, prazo_dias, esforco}], justificativa, considerou_contexto, numeros_usados, numeros_fora, ferramentas_chamadas, versao, contexto, cache, criada_em, privacidade, guardas, meta}`. Sempre por IA; `503 {erro, motivo}` (`sem_chave` \| `mcp_indisponivel` \| `falha_ia`) se ela não responder |
+| GET | `/acoes/sugestoes/:rota_id` | histórico de versões da sugestão da rota |
+| GET | `/contatos` | contatos cadastrados, com o telefone **mascarado** |
+| POST, PATCH | `/contatos`, `/contatos/:id` | cadastrar (`telefone`, `nome`, `papel`, `transportadora?`, `rotas[]`) e editar/ativar/desativar |
+| GET | `/rotas/:id/responsaveis` | quem responde pela rota (sem telefone): sugestão no "Validar e acompanhar" |
+| GET | `/contatos/por-telefone/:tel` | **interno** (`x-internal-token`): cadastro de quem escreveu no WhatsApp, com as rotas dele. 404 = não cadastrado |
+| POST | `/contatos/:id/escopo` | **interno**: token curto (15 min) do MCP com as rotas desse contato |
 | POST | `/acoes` | também aceita `status: 'Descartada'` (sem responsável/prazo): a sugestão recusada fica no histórico |
 | GET | `/ia/uso` | chamadas de IA por operação: tokens, custo em US$ e latência |
 | GET | `/health` | `{ok, banco, fonte}` |
 
-`meta.modo` diz se respondeu o Claude (`claude`) ou o modo simulado (`simulado`, sem chave ou com falha).
+`meta.modo` diz se respondeu o Claude (`claude`) ou o modo simulado (`simulado`). Na **extração** o simulado entra sem chave ou com falha; na **ação sugerida** não existe sugestão sem IA: sem chave, sem MCP ou com falha a API responde 503, e o simulado só roda com `AI_PROVIDER=fake` explícito (testes e desenvolvimento).
 
-**Tool use na ação sugerida.** A IA (Claude Sonnet 5.5, `toolRunner` do SDK) não recebe os dados prontos: chama
-`consultar_rota`, `ocorrencias_da_rota` (por tipo, com taxa por mil viagens, calculada na API) e `listar_praticas`, e só responde
-por `propor_acao`, que recusa prática fora do guia. `ferramentas_chamadas` mostra o que ela consultou; `numeros_fora` lista
-número citado que não veio do front nem das ferramentas (deve ficar vazio).
+`POST /ocorrencias` aceita `reportado_por` (id do contato). Pelo WhatsApp (`canal: 'whatsapp'`) ele é obrigatório e a chamada exige `x-internal-token`; a API confere se o contato está ativo e se a rota é dele (403 se não). `detalhes.reportado_por` guarda quem registrou (nome, papel, transportadora; nunca o telefone).
+
+**Ação sugerida: guia + dados da rota (MCP).** A IA (Claude Sonnet 5.5, `toolRunner` do SDK) parte do guia de boas práticas
+(`listar_praticas`) e consulta os dados da rota no servidor MCP (`app/mcp`): resumo e tendência, ocorrências por tipo, padrão de
+horário, trecho (km) e clima, veículos e cargas, atrasos no hub, comparação com a mediana da etapa e ações anteriores. Só responde
+por `propor_acao`, que exige de 1 a 3 práticas do guia (exatamente uma principal) e o id de cada uma citado no texto
+("... (TRF-08, TRF-05)"). `ferramentas_chamadas` mostra o que ela consultou; `numeros_fora` lista número citado que não veio do
+front nem das ferramentas (deve ficar vazio).
+
+A sugestão fica guardada por rota e versão (`sugestoes_acao`). Sem `contexto`, a API reaproveita a última versão enquanto a
+`assinatura` dos dados (números da rota, ocorrências novas, ações) for a mesma; com `contexto` ("Dar detalhes", até 600
+caracteres, mascarado e tratado como dado) gera uma versão nova. Descartar uma ação muda a assinatura: a IA prepara outra sabendo
+do que não serviu.
+
+**MCP e acesso mínimo** (`app/mcp`, porta 7335, Streamable HTTP, só leitura). Conecta ao Postgres com o papel `checkroute_leitura`:
+só `SELECT` em `gold_rotas`, `gold_operacao_mes`, `gold_referencia`, `acoes` e nas views `v_ocorrencias` (sem relato) e
+`v_sac_trecho` (do relato sai só km, hora e clima), e nas colunas de `bronze_tms_viagens` sem placa. Não vê `contatos`, `wa_*`,
+`ia_uso` nem o texto dos relatos. Smoke: `npm run mcp:smoke -w app/mcp`.
+
+**Escopo por remetente.** Cada conexão traz um token assinado (HMAC, 15 min) emitido pela API com `papel` e `rotas`. O MCP só
+confia nele: ferramenta com rota fora do escopo responde o mesmo erro neutro de rota inexistente. Motorista tem 6 ferramentas;
+transportadora, gestor e painel têm 8 (com `atrasos` e `historico_acoes`); `comparar_rotas` com escopo restrito devolve só "acima ou
+abaixo da mediana", sem id, nome ou número de outra rota. Evidência: `npm test -w app/mcp` (matriz ferramenta × papel × rota de
+fora, token adulterado e expirado) e `npm run escopo -w app/whatsapp` (conecta como o motorista da T02 e tenta ver as outras rotas).
+
+**Contatos.** Só quem o painel cadastra registra pelo WhatsApp. O ETL e o start da API criam um motorista e um responsável por rota
+(fictícios); `WA_CONTATOS_DEMO="telefone:nome:papel:T02,T05;..."` cadastra o número de quem for testar.
 
 **Dados pessoais** (`app/api/src/privacidade.ts`). Telefone, CPF, e-mail, nome do motorista e placa são mascarados antes de
 o relato ir ao Claude e antes de gravar. Placa e motorista viram pseudônimos estáveis (`VEIC-xxxx`, `Motorista #xxxx`), o que
-ainda permite cruzar o mesmo veículo. Cobre o cabeçalho `[via WhatsApp <telefone>, <nome>]` que o app de WhatsApp anexa.
+ainda permite cruzar o mesmo veículo. O app de WhatsApp não anexa mais telefone e nome ao relato (vão em `reportado_por`); a máscara cobre também registros antigos com o cabeçalho `[via WhatsApp <telefone>, <nome>]`.
 
 **Prompt injection** (`app/api/src/guardas.ts`). O relato não fecha a tag `<relato>` (`<` e `>` viram `‹ ›`); frases que tentam
 mandar na IA são sinalizadas para quem revisa; a saída passa por schema e regras do código (rota existente, enum, custo

@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { semearContatos } from './contatos.js';
 
 const aqui = dirname(fileURLToPath(import.meta.url));
 export const API_DIR = resolve(aqui, '..');
@@ -84,5 +85,71 @@ export async function iniciarBanco() {
       ms INTEGER NOT NULL,
       simulado BOOLEAN NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS sugestoes_acao (
+      id SERIAL PRIMARY KEY,
+      rota_id TEXT NOT NULL,
+      versao INTEGER NOT NULL,
+      assinatura TEXT NOT NULL,
+      contexto TEXT,
+      sugestao JSONB NOT NULL,
+      ferramentas JSONB NOT NULL DEFAULT '[]',
+      modelo TEXT NOT NULL,
+      uso JSONB,
+      simulado BOOLEAN NOT NULL DEFAULT false,
+      criada_em TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (rota_id, versao)
+    );
+    CREATE TABLE IF NOT EXISTS contatos (
+      id TEXT PRIMARY KEY,
+      telefone TEXT NOT NULL UNIQUE,
+      nome TEXT NOT NULL,
+      papel TEXT NOT NULL,
+      transportadora TEXT,
+      rotas TEXT[] NOT NULL DEFAULT '{}',
+      ativo BOOLEAN NOT NULL DEFAULT true,
+      criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
+  await prepararLeitura().catch((e) => console.warn('[db] papel de leitura do MCP não preparado:', (e as Error).message));
+  await semearContatos().catch((e) => console.warn('[db] contatos de exemplo não criados:', (e as Error).message));
+}
+
+/**
+ * Acesso mínimo para o servidor MCP: papel `checkroute_leitura` (login, só SELECT) e as views que ele lê.
+ * - v_ocorrencias: ocorrências da base + as registradas na demo, sem relato, sem detalhes e sem quem relatou;
+ * - v_sac_trecho: do relato do SAC sai só km, hora e clima (o texto fica no banco).
+ * O papel não tem acesso a contatos, wa_*, ia_uso nem às colunas de placa e relato. Idempotente.
+ */
+export async function removerViewsLeitura() {
+  await sql('DROP VIEW IF EXISTS v_sac_trecho; DROP VIEW IF EXISTS v_ocorrencias;');
+}
+
+export async function prepararLeitura() {
+  if (!(await tabelaExiste('gold_ocorrencias')) || !(await tabelaExiste('bronze_sac_ocorrencias'))) return false;
+  const senha = (process.env.LEITURA_PASSWORD || 'leitura').replace(/'/g, "''");
+  await sql(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'checkroute_leitura') THEN
+        CREATE ROLE checkroute_leitura LOGIN PASSWORD '${senha}';
+      END IF;
+    END $$;
+    CREATE OR REPLACE VIEW v_ocorrencias AS
+      SELECT id, data, mes, perna, rota_id, tipo, produto, custo, status, protocolo, canal FROM gold_ocorrencias
+      UNION ALL
+      SELECT id, dados->>'data', dados->>'mes', dados->>'perna', dados->>'rota_id', dados->>'tipo', dados->>'produto',
+             (dados->>'custo')::float8, dados->>'status', NULL, dados->>'canal' FROM ocorrencias_novas;
+    CREATE OR REPLACE VIEW v_sac_trecho AS
+      SELECT protocolo, ref_tipo, ref_id, codigo_tipo,
+             NULLIF(substring(relato from '[Kk][Mm]\\s*(\\d{1,4})'), '')::int AS km,
+             NULLIF(substring(relato from '(\\d{1,2}):\\d{2}'), '')::int AS hora_relato,
+             CASE WHEN relato ~* 'neblina' THEN 'neblina' WHEN relato ~* 'chuva' THEN 'chuva'
+                  WHEN relato ~* '(tempo seco|pista seca|tempo bom)' THEN 'seco' END AS clima
+        FROM bronze_sac_ocorrencias;
+    REVOKE ALL ON ALL TABLES IN SCHEMA public FROM checkroute_leitura;
+    GRANT CONNECT ON DATABASE ${(await sql<{ d: string }>('SELECT current_database() AS d'))[0].d} TO checkroute_leitura;
+    GRANT USAGE ON SCHEMA public TO checkroute_leitura;
+    GRANT SELECT ON gold_rotas, gold_operacao_mes, gold_referencia, v_ocorrencias, v_sac_trecho, acoes TO checkroute_leitura;
+    GRANT SELECT (viagem_id, rota_id, tipo_veiculo, saida_cd, previsao_chegada_hub, chegada_hub, status) ON bronze_tms_viagens TO checkroute_leitura;
+  `);
+  return true;
 }

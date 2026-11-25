@@ -87,6 +87,7 @@
 .ds-campo { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
 .ds-campo--full { grid-column: 1 / -1; }
 .ds-campo input, .ds-campo select, .ds-campo textarea { width: 100%; min-height: var(--control-h); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-panel); color: var(--color-fg); font-weight: 400; }
+.ds-campo input[type='checkbox'], .ds-campo input[type='radio'] { width: 18px; min-height: 18px; height: 18px; padding: 0; flex: none; accent-color: var(--action-primary); }
 .ds-campo textarea { min-height: 96px; resize: vertical; line-height: var(--lh-body); }
 .ds-campo input[readonly] { background: var(--color-bg); color: var(--color-fg-muted); }
 .ds-campo .ds-req { color: var(--color-bad); margin-left: 2px; }

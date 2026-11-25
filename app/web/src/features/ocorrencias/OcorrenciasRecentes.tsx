@@ -59,6 +59,10 @@ export function OcorrenciasRecentes() {
                 <div className="ds-muted" style={{ fontSize: 13 }}>
                   {o.id} · registrada {d.registrada_em ? new Date(String(d.registrada_em)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : fmt.data(o.data)}
                   {d.com_foto ? ' · com foto' : ''}
+                  {(() => {
+                    const r = d.reportado_por as { nome?: string; papel?: string; transportadora?: string | null } | undefined;
+                    return r?.nome ? ` · relatado por ${r.nome} (${r.papel}${r.transportadora ? ` · ${r.transportadora}` : ''})` : '';
+                  })()}
                 </div>
               </summary>
               <div className="cr-lado">

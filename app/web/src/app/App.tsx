@@ -10,12 +10,14 @@ import { VisaoGeral } from '@/features/visao/VisaoGeral';
 import { OcorrenciasPagina } from '@/features/ocorrencias/OcorrenciasPagina';
 import { AcoesPagina } from '@/features/acoes/AcoesPagina';
 import { Atendimentos } from '@/features/atendimento/Atendimentos';
+import { ContatosPagina } from '@/features/contatos/ContatosPagina';
 
 const TITULO: Record<Pagina, string> = {
   visao: 'Visão geral',
   rotas: 'Saúde das rotas',
   ocorrencias: 'Ocorrências',
   acoes: 'Ações',
+  contatos: 'Contatos',
   guia: 'Guia de boas práticas',
   atendimentos: 'Atendimentos',
 };
@@ -69,6 +71,7 @@ export function App() {
 
           {pagina === 'ocorrencias' && <OcorrenciasPagina />}
           {pagina === 'acoes' && <AcoesPagina />}
+          {pagina === 'contatos' && <ContatosPagina />}
           {pagina === 'guia' && <Guia />}
 
           {pagina === 'atendimentos' && <Atendimentos />}
