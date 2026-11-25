@@ -169,6 +169,19 @@
   "origem": "Proposta inicial · validar com a operação"
  },
  {
+  "id": "TRF-08",
+  "perna": "transferencia",
+  "gatilho": "Colisão|Tombamento|Saída de pista|Avaria por frenagem",
+  "titulo": "Prevenção de acidentes na estrada",
+  "quando_usar": "Acidentes ou avaria por freada brusca entre o CD e o hub.",
+  "acao": "Rever com a {transportadora} o trecho, o horário e a amarração da carga: {n_tipo} casos de {tipo} de {produto} no mês, e acionar o seguro com o dossiê de cada caso.",
+  "como_fazer": "Mapear trechos e faixas de horário com mais acidentes por mil viagens; limitar jornada noturna e velocidade por telemetria; amarração e paletização para frenagem brusca; dossiê com relato, foto, trecho e horário para o seguro.",
+  "melhora": "Ocorrências por 100 viagens",
+  "esforco": "Médio",
+  "prazo_dias": 30,
+  "origem": "Proposta inicial · validar com a operação"
+ },
+ {
   "id": "ENT-01",
   "perna": "entrega",
   "gatilho": "pct_prazo",
